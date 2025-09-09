@@ -1,0 +1,274 @@
+openapi: 3.0.3
+info:
+  title: Ticketing Management System API
+  version: 1.0.0
+  description: JWT auth with refresh cookie; tickets CRUD and list.
+servers:
+  - url: /api
+
+tags:
+  - name: Auth
+  - name: Tickets
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    refreshTokenCookie:
+      type: apiKey
+      in: cookie
+      name: refreshToken
+
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code: { type: string, example: UNAUTHORIZED }
+            message: { type: string, example: Missing or invalid token }
+            details: { type: object, additionalProperties: true }
+
+    User:
+      type: object
+      properties:
+        id: { type: string, example: usr_01J6Q5W2F8S6AX }
+        name: { type: string, example: Jane Doe }
+        email: { type: string, format: email, example: jane@example.com }
+        role: { type: string, enum: [customer, agent, admin], example: customer }
+        createdAt: { type: string, format: date-time }
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, minLength: 8 }
+
+    LoginResponse:
+      type: object
+      properties:
+        accessToken: { type: string }
+        user: { $ref: '#/components/schemas/User' }
+
+    RefreshResponse:
+      type: object
+      properties:
+        accessToken: { type: string }
+
+    Ticket:
+      type: object
+      properties:
+        id: { type: string, example: tkt_01J6Q7N5Q6M2H1 }
+        subject: { type: string }
+        description: { type: string }
+        status: { type: string, enum: [open, in_progress, resolved, closed], example: open }
+        priority: { type: string, enum: [low, medium, high], example: medium }
+        requesterId: { type: string }
+        assigneeId: { type: string, nullable: true }
+        tags: { type: array, items: { type: string } }
+        duplicateOf: { type: string, nullable: true }
+        slaDueAt: { type: string, format: date-time, nullable: true }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    TicketCreate:
+      type: object
+      required: [subject]
+      properties:
+        subject: { type: string }
+        description: { type: string }
+        priority: { type: string, enum: [low, medium, high], default: medium }
+        tags: { type: array, items: { type: string } }
+
+    TicketUpdate:
+      type: object
+      properties:
+        subject: { type: string }
+        description: { type: string }
+        status: { type: string, enum: [open, in_progress, resolved, closed] }
+        priority: { type: string, enum: [low, medium, high] }
+        assigneeId: { type: string, nullable: true }
+        tags: { type: array, items: { type: string } }
+
+    TicketsListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/Ticket' }
+        page: { type: integer, example: 1 }
+        limit: { type: integer, example: 20 }
+        total: { type: integer, example: 57 }
+
+  parameters:
+    TicketId:
+      name: ticketId
+      in: path
+      required: true
+      schema: { type: string }
+    Page:   { name: page, in: query, schema: { type: integer, minimum: 1, default: 1 } }
+    Limit:  { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+    Status: { name: status, in: query, schema: { type: string, enum: [open,in_progress,resolved,closed] } }
+    Priority: { name: priority, in: query, schema: { type: string, enum: [low,medium,high] } }
+    AssigneeId: { name: assigneeId, in: query, schema: { type: string } }
+    RequesterId: { name: requesterId, in: query, schema: { type: string } }
+    SearchQ: { name: q, in: query, schema: { type: string } }
+    Sort:
+      name: sort
+      in: query
+      description: Sort by field, prefix with "-" for desc (e.g., -updatedAt)
+      schema: { type: string }
+
+paths:
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Login and receive an access token (refresh token set as httpOnly cookie)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginRequest' }
+      responses:
+        '200':
+          description: Logged in
+          headers:
+            Set-Cookie:
+              description: Sets httpOnly refresh cookie
+              schema: { type: string }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LoginResponse' }
+        '401':
+          description: Invalid credentials
+          content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
+
+  /auth/refresh:
+    post:
+      tags: [Auth]
+      summary: Get a new access token using the refresh cookie
+      security: [ { refreshTokenCookie: [] } ]
+      responses:
+        '200':
+          description: New access token
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RefreshResponse' }
+        '401':
+          description: Missing/invalid refresh token
+          content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Logout (invalidate refresh token and clear cookie)
+      security: [ { refreshTokenCookie: [] } ]
+      responses:
+        '204': { description: Logged out }
+        '401':
+          description: Not logged in
+          content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
+
+  /tickets:
+    get:
+      tags: [Tickets]
+      summary: Get a collection of tickets (paged, filterable)
+      security: [ { bearerAuth: [] } ]
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Status'
+        - $ref: '#/components/parameters/Priority'
+        - $ref: '#/components/parameters/AssigneeId'
+        - $ref: '#/components/parameters/RequesterId'
+        - $ref: '#/components/parameters/SearchQ'
+        - $ref: '#/components/parameters/Sort'
+      responses:
+        '200':
+          description: A page of tickets
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TicketsListResponse' }
+        '401':
+          description: Unauthorized
+          content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
+
+    post:
+      tags: [Tickets]
+      summary: Create a ticket
+      security: [ { bearerAuth: [] } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TicketCreate' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ticket: { $ref: '#/components/schemas/Ticket' }
+        '401':
+          description: Unauthorized
+          content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
+        '422':
+          description: Validation error
+          content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
+
+  /tickets/{ticketId}:
+    get:
+      tags: [Tickets]
+      summary: Get one ticket by ID
+      security: [ { bearerAuth: [] } ]
+      parameters: [ { $ref: '#/components/parameters/TicketId' } ]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ticket: { $ref: '#/components/schemas/Ticket' }
+        '401': { description: Unauthorized, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
+        '404': { description: Not found,   content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
+
+    patch:
+      tags: [Tickets]
+      summary: Update a ticket (partial)
+      security: [ { bearerAuth: [] } ]
+      parameters: [ { $ref: '#/components/parameters/TicketId' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TicketUpdate' }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ticket: { $ref: '#/components/schemas/Ticket' }
+        '401': { description: Unauthorized, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
+        '404': { description: Not found,   content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
+        '422': { description: Validation,  content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
+
+    delete:
+      tags: [Tickets]
+      summary: Delete a ticket
+      security: [ { bearerAuth: [] } ]
+      parameters: [ { $ref: '#/components/parameters/TicketId' } ]
+      responses:
+        '204': { description: Deleted }
+        '401': { description: Unauthorized, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
+        '404': { description: Not found,   content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }

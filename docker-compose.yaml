@@ -23,14 +23,14 @@ services:
     container_name: backend
     environment:
       NODE_ENV: development
-      PORT: ${BACKEND_PORT}
+      PORT: 3000
       DATABASE_URL: postgres://${DB_USER}:${DB_PASSWORD}@db:${DB_PORT}/${DB_NAME}
     depends_on:
       db:
         condition: service_healthy
-    command: npm run dev
+    command: sh -lc "npm i && npm run dev"
     ports:
-      - "${BACKEND_PORT}:${BACKEND_PORT}"
+      - "${BACKEND_PORT}:3000"
     volumes:
       - ./backend:/app
       - /app/node_modules
@@ -44,13 +44,10 @@ services:
       FRONTEND_PORT: ${FRONTEND_PORT}
       VITE_API_BASE: http://localhost:${BACKEND_PORT}
       CHOKIDAR_USEPOLLING: "1"
-    command: npm run dev -- --host 0.0.0.0 --port ${FRONTEND_PORT}
+    command: sh -lc "npm i && npm run dev -- --host 0.0.0.0 --port ${FRONTEND_PORT}"
     ports:
       - "${FRONTEND_PORT}:${FRONTEND_PORT}"
     volumes:
       - ./frontend:/app
-      - /app/node_modules
-
-
 volumes:
   dbdata:
