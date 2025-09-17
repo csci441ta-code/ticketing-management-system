@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { apiPost } from '../utils/api'
-import { decodeToken } from '../utils/jwt'
+import { apiPost } from '../utils/api.js'
+import { decodeToken } from '../utils/jwt.js'
 
 const email = ref('')
 const password = ref('')
