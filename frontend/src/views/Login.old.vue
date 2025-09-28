@@ -1,59 +1,54 @@
 <script setup>
-import { ref, computed } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
+import { ref, computed, onMounted } from 'vue'
 import { apiPost } from '../utils/api.js'
-import { safeDecode, setToken, getRoleFromToken } from '../utils/jwt.js'
-
-const router = useRouter()
-const route = useRoute()
+import { decodeToken } from '../utils/jwt.js'
 
 const email = ref('')
 const password = ref('')
 const showPassword = ref(false)
 const isSubmitting = ref(false)
 const errorMsg = ref('')
+const successMsg = ref('')
 
 const emailValid = computed(() => /.+@.+\..+/.test(email.value))
 const passwordValid = computed(() => password.value.length >= 6)
 const formValid = computed(() => emailValid.value && passwordValid.value)
 
-async function onSubmit() {
-  if (!formValid.value || isSubmitting.value) return
-  isSubmitting.value = true
+function persistToken(accessToken) {
+  localStorage.setItem('accessToken', accessToken)
+  const payload = decodeToken(accessToken)
+  if (payload) {
+    localStorage.setItem('userEmail', payload.email || '')
+    localStorage.setItem('tokenExp', payload.exp ? String(payload.exp) : '')
+  }
+}
+
+async function handleLogin() {
   errorMsg.value = ''
-
+  successMsg.value = ''
+  if (!formValid.value) {
+    errorMsg.value = 'Please provide a valid email and a password (6+ chars).'
+    return
+  }
+  isSubmitting.value = true
   try {
-    // Adjust path to your backend login endpoint if different
-    const data = await apiPost('/auth/login', { email: email.value, password: password.value })
-    const token = data?.accessToken || data?.token
-    if (!token) throw new Error('Login response missing access token')
-
-    const payload = safeDecode(token)
-    if (!payload) throw new Error('Could not decode token')
-
-    setToken(token)
-
-    // If backend returns role in body, prefer it. Otherwise use JWT claim.
-    const role = data?.role || getRoleFromToken() || 'user'
-
-    const redirect = route.query.redirect
-    if (redirect) {
-      return router.replace(String(redirect))
-    }
-
-    if (role === 'admin') {
-      return router.replace({ name: 'admin-app' })
-    } else {
-      return router.replace({ name: 'user-app' })
-    }
+    const { accessToken } = await apiPost('/auth/login', { email: email.value, password: password.value })
+    persistToken(accessToken)
+    successMsg.value = 'Logged in successfully.'
+    // You can emit or navigate here; for now we just show a message.
   } catch (err) {
-    errorMsg.value = err?.message || 'Login failed'
+    errorMsg.value = err?.message || 'Login failed.'
   } finally {
     isSubmitting.value = false
   }
 }
-</script>
 
+// If user already has a token, optionally prefill email
+onMounted(() => {
+  const stored = localStorage.getItem('userEmail')
+  if (stored) email.value = stored
+})
+</script>
 
 <template>
   <div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 px-4">
@@ -64,7 +59,7 @@ async function onSubmit() {
           <p class="text-slate-500 text-sm mt-1">Access your dashboard and manage tickets</p>
         </div>
 
-        <form @submit.prevent="onSubmit">
+        <form @submit.prevent="handleLogin" class="space-y-4">
           <div>
             <label for="email" class="block text-sm font-medium text-slate-700">Email</label>
             <input
