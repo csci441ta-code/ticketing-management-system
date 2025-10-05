@@ -19,6 +19,10 @@ export function getStoredToken() {
   return localStorage.getItem('accessToken') || null
 }
 
+export function getStoredRefeshToken() {
+  return localStorage.getItem('refreshToken') || null
+}
+
 export function isTokenValid() {
   const t = getStoredToken()
   if (!t) return false
@@ -44,7 +48,11 @@ export function getRoleFromToken() {
 export function setToken(token) {
   localStorage.setItem('accessToken', token)
 }
+export function setRefreshToken(token) {
+  localStorage.setItem('refreshToken', token)
+}
 
 export function clearToken() {
   localStorage.removeItem('accessToken')
+  localStorage.removeItem('refreshToken')
 }

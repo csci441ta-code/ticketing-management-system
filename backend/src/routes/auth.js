@@ -37,8 +37,9 @@ function clientMeta(req) {
 // POST /api/auth/login  { email, password }
 router.post('/login', async (req, res) => {
   try {
+    console.log("req.body  ", req.body )
     const { email, password } = req.body || {};
-    if (!email || !password) return res.status(400).json({ error: 'email and password required' });
+    if (!email || !password) return res.status(400).json({ error: 'email and password required', ok: req.body });
 
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user || user.deletedAt) return res.status(401).json({ error: 'Invalid credentials' });

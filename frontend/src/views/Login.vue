@@ -2,7 +2,7 @@
 import { ref, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { apiPost } from '../utils/api.js'
-import { safeDecode, setToken, getRoleFromToken } from '../utils/jwt.js'
+import { safeDecode, setToken, setRefreshToken, getRoleFromToken } from '../utils/jwt.js'
 
 const router = useRouter()
 const route = useRoute()
@@ -24,7 +24,7 @@ async function onSubmit() {
 
   try {
     // Adjust path to your backend login endpoint if different
-    const data = await apiPost('/auth/login', { email: email.value, password: password.value })
+    const data = await apiPost('/api/auth/login', { email: email.value, password: password.value })
     const token = data?.accessToken || data?.token
     if (!token) throw new Error('Login response missing access token')
 
@@ -32,20 +32,16 @@ async function onSubmit() {
     if (!payload) throw new Error('Could not decode token')
 
     setToken(token)
+    setRefreshToken(data?.refreshToken)
 
     // If backend returns role in body, prefer it. Otherwise use JWT claim.
     const role = data?.role || getRoleFromToken() || 'user'
 
-    const redirect = route.query.redirect
-    if (redirect) {
-      return router.replace(String(redirect))
-    }
-
-    if (role === 'admin') {
-      return router.replace({ name: 'admin-app' })
-    } else {
-      return router.replace({ name: 'user-app' })
-    }
+  const dest = route.query.redirect ? String(redirect) : (role === 'admin' ? { name:'admin-app' } : { name:'user-app' })
+  const toPath = router.resolve(dest).fullPath
+  if (router.currentRoute.value.fullPath !== toPath) {
+    await router.replace(dest)
+  }
   } catch (err) {
     errorMsg.value = err?.message || 'Login failed'
   } finally {

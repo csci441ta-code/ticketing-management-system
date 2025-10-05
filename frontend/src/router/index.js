@@ -19,22 +19,30 @@ const router = createRouter({
 
 router.beforeEach((to, from, next) => {
   const hasToken = isTokenValid()
-  const role = getRoleFromToken()
+  const role = getRoleFromToken() || 'user'
+
+  // helper: only redirect if target !== current destination
+  const sameTarget = (loc) => {
+    const a = typeof loc === 'string' ? router.resolve(loc) : router.resolve(loc)
+    const b = router.resolve(to)
+    return a.fullPath === b.fullPath
+  }
 
   if (to.meta.guestOnly && hasToken) {
     // Already logged in -> route to appropriate home
-    if (role === 'admin') return next({ name: 'admin-app' })
-    return next({ name: 'user-app' })
+    const target = role === 'admin' ? { name: 'admin-app' } : { name: 'user-app' }
+    return sameTarget(target) ? next() : next(target)
   }
 
   if (to.meta.requiresAuth) {
     if (!hasToken) {
-      return next({ name: 'login', query: { redirect: to.fullPath } })
+      const target = { name: 'login', query: { redirect: to.fullPath } }
+      return sameTarget(target) ? next() : next(target)
     }
     if (to.meta.roles && !to.meta.roles.includes(role)) {
       // Not authorized for this route -> send to their home
-      if (role === 'admin') return next({ name: 'admin-app' })
-      return next({ name: 'user-app' })
+      const target = role === 'admin' ? { name: 'admin-app' } : { name: 'user-app' }
+      return sameTarget(target) ? next() : next(target)
     }
   }
 
