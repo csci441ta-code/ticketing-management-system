@@ -17,10 +17,15 @@ app.get('/api/health', (_req, res) => {
   res.json({ ok: true, message: "Backend is alive!" });
 });
 
-// Example route
-app.get('/api/hello', (_req, res) => {
-  res.json({ message: "Hello from Express backend 🎉" });
-});
+app.use('/api/auth', require(path.join(__dirname, 'routes', 'auth')));
+
+const requireAuth = require(path.join(__dirname, 'middleware', 'requireAuth'));
+
+const ticketsPath = path.join(__dirname, 'routes', 'tickets');
+const ticketsRouter = require(ticketsPath);
+// app.use('/api/tickets', ticketsRouter);
+app.use('/api/tickets', requireAuth, ticketsRouter);
+
 
 const port = process.env.BACKEND_PORT || 3000;
-app.listen(port, () => console.log(`🚀 Backend running on http://localhost:${port}\n📘 Swagger: http://localhost:${port}/api-docs`));
+app.listen(port, () => console.log(`🚀 Backend running on http://localhost:${port}`));
