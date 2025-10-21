@@ -12,7 +12,7 @@ export async function apiPost(path, body) {
       'Content-Type': 'application/json',
       ...getAuthHeader(),
     },
-    credentials: 'include', // include refresh cookie for /auth/refresh if backend uses it
+   // credentials: 'include', // include refresh cookie for /auth/refresh if backend uses it
     body: JSON.stringify(body),
   });
   const data = await res.json().catch(() => ({}));

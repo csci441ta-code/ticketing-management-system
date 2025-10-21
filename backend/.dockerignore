@@ -1,0 +1,12 @@
+node_modules
+npm-debug.log
+yarn-error.log
+.pnp.*
+.pnpm-store
+.vscode
+.git
+dist
+build
+.next
+.vite
+.DS_Store
