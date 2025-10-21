@@ -13,3 +13,161 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+enum UserRole {
+  ADMIN
+  USER
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+  REOPENED
+  ON_HOLD
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum TicketType {
+  BUG
+  TASK
+  FEATURE
+  INCIDENT
+  SUPPORT
+}
+
+enum TokenType {
+  ACCESS
+  REFRESH
+}
+
+model User {
+  id             String          @id @default(cuid())
+  email          String          @unique
+  passwordHash   String
+  firstName      String?
+  lastName       String?
+  displayName    String?
+  role           UserRole        @default(USER)
+  isActive       Boolean         @default(true)
+
+  // relations
+  ticketsReported Ticket[]       @relation("TicketsReported")
+  ticketsAssigned Ticket[]       @relation("TicketsAssigned")
+  tokens          Token[]
+  watching        TicketWatcher[]
+  ticketHistory   TicketHistory[]
+  notifications   Notification[]
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  deletedAt      DateTime?
+
+  @@index([email])
+}
+
+model Token {
+  id          String    @id @default(cuid())
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String
+  type        TokenType
+  jti         String
+  hashedValue String?
+  expiresAt   DateTime
+  revokedAt   DateTime?
+  userAgent   String?
+  ip          String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  @@unique([jti, type])
+  @@index([userId, type, expiresAt])
+}
+
+model Ticket {
+  id           String         @id @default(cuid())
+  key          String?        @unique
+  title        String
+  description  String?
+  status       TicketStatus   @default(OPEN)
+  priority     TicketPriority @default(MEDIUM)
+  type         TicketType     @default(TASK)
+
+  reporter     User           @relation("TicketsReported", fields: [reporterId], references: [id], onDelete: Restrict)
+  reporterId   String
+  assignee     User?          @relation("TicketsAssigned", fields: [assigneeId], references: [id], onDelete: SetNull)
+  assigneeId   String?
+
+  watchers     TicketWatcher[]
+  history      TicketHistory[]
+
+  dueAt        DateTime?
+  resolvedAt   DateTime?
+  closedAt     DateTime?
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  deletedAt    DateTime?
+
+  @@index([status, priority])
+  @@index([assigneeId])
+  @@index([reporterId])
+}
+
+model TicketHistory {
+  id        String   @id @default(cuid())
+
+  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  ticketId  String
+
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userId    String?
+
+  summary   String
+  changes   Json?
+  comment   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  @@index([ticketId, createdAt])
+  @@index([userId])
+}
+
+model TicketWatcher {
+  ticket    Ticket  @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  ticketId  String
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  @@id([ticketId, userId])
+  @@index([userId])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  title     String
+  message   String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+  readAt    DateTime?
+
+  @@index([userId, createdAt])
+}
