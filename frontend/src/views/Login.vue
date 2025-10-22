@@ -1,125 +1,98 @@
 <script setup>
-import { ref, computed } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
+import { ref, onMounted } from 'vue'
+import { useRouter, useRoute, RouterLink } from 'vue-router'
 import { apiPost } from '../utils/api.js'
-import { safeDecode, setToken, setRefreshToken, getRoleFromToken } from '../utils/jwt.js'
+import { setToken, setRefreshToken, getRoleFromToken } from '../utils/jwt.js'
 
 const router = useRouter()
 const route = useRoute()
 
-const email = ref('')
+const email = ref(route.query.email ? String(route.query.email) : '')
 const password = ref('')
 const showPassword = ref(false)
+const rememberMe = ref(false)
 const isSubmitting = ref(false)
 const errorMsg = ref('')
 
-const emailValid = computed(() => /.+@.+\..+/.test(email.value))
-const passwordValid = computed(() => password.value.length >= 6)
-const formValid = computed(() => emailValid.value && passwordValid.value)
+onMounted(() => {
+  const saved = localStorage.getItem('rememberEmail')
+  if (saved) {
+    email.value = saved
+    rememberMe.value = true
+  }
+})
 
 async function onSubmit() {
-  if (!formValid.value || isSubmitting.value) return
-  isSubmitting.value = true
   errorMsg.value = ''
-
+  isSubmitting.value = true
   try {
-    // Adjust path to your backend login endpoint if different
-    const data = await apiPost('/api/auth/login', { email: email.value, password: password.value })
-    const token = data?.accessToken || data?.token
-    if (!token) throw new Error('Login response missing access token')
+    const data = await apiPost('/auth/login', { email: email.value, password: password.value })
+    if (!data) throw new Error('No response')
+    if (data.accessToken) setToken(data.accessToken)
+    if (data.refreshToken) setRefreshToken(data.refreshToken)
 
-    const payload = safeDecode(token)
-    if (!payload) throw new Error('Could not decode token')
+    if (rememberMe.value) localStorage.setItem('rememberEmail', email.value)
+    else localStorage.removeItem('rememberEmail')
 
-    setToken(token)
-    setRefreshToken(data?.refreshToken)
-
-    // If backend returns role in body, prefer it. Otherwise use JWT claim.
-    const role = data?.role || getRoleFromToken() || 'user'
-
-  const dest = route.query.redirect ? String(redirect) : (role === 'admin' ? { name:'admin-app' } : { name:'user-app' })
-  const toPath = router.resolve(dest).fullPath
-  if (router.currentRoute.value.fullPath !== toPath) {
-    await router.replace(dest)
-  }
-  } catch (err) {
-    errorMsg.value = err?.message || 'Login failed'
+    const role = getRoleFromToken() || (data.user?.role ?? 'USER')
+    if (String(role).toLowerCase() === 'admin') router.push({ name: 'admin-app' })
+    else router.push({ name: 'user-app' })
+  } catch (e) {
+    errorMsg.value = e?.message || 'Login failed'
   } finally {
     isSubmitting.value = false
   }
 }
 </script>
 
-
 <template>
-  <div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 px-4">
+  <div class="min-h-screen bg-slate-100 flex items-center justify-center p-6">
     <div class="w-full max-w-md">
-      <div class="bg-white shadow-xl rounded-2xl p-8 border border-slate-200">
-        <div class="text-center mb-6">
-          <h1 class="text-2xl font-bold tracking-tight text-slate-900">Sign in to Ticketing</h1>
-          <p class="text-slate-500 text-sm mt-1">Access your dashboard and manage tickets</p>
+      <div class="bg-white rounded-xl shadow-lg border border-slate-200">
+        <div class="px-6 pt-6">
+          <h1 class="text-xl font-semibold text-slate-800">Sign in</h1>
+          <p class="text-slate-500 text-sm">Access your tickets and dashboard.</p>
         </div>
 
-        <form @submit.prevent="onSubmit">
+        <form class="px-6 pb-6 pt-4 space-y-4" @submit.prevent="onSubmit">
           <div>
-            <label for="email" class="block text-sm font-medium text-slate-700">Email</label>
-            <input
-              id="email"
-              v-model="email"
-              type="email"
-              placeholder="you@example.com"
-              autocomplete="username"
-              class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-slate-900 placeholder-slate-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
-            <p v-if="email && !emailValid" class="mt-1 text-xs text-red-600">Please enter a valid email.</p>
+            <label class="block text-sm font-medium text-slate-700">Email</label>
+            <input type="email" v-model="email" autocomplete="email" required
+              class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
           </div>
 
           <div>
-            <label for="password" class="block text-sm font-medium text-slate-700">Password</label>
+            <label class="block text-sm font-medium text-slate-700">Password</label>
             <div class="mt-1 relative">
-              <input
-                :type="showPassword ? 'text' : 'password'"
-                id="password"
-                v-model="password"
-                placeholder="••••••••"
-                autocomplete="current-password"
-                class="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-slate-900 placeholder-slate-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 pr-12"
-              />
-              <button
-                type="button"
-                class="absolute inset-y-0 right-2 px-2 text-sm text-slate-500 hover:text-slate-700"
-                @click="showPassword = !showPassword"
-              >
+              <input :type="showPassword ? 'text' : 'password'" v-model="password" autocomplete="current-password" required
+                class="w-full rounded-lg border border-slate-300 px-3 py-2 pr-20 focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+              <button type="button" @click="showPassword = !showPassword"
+                class="absolute inset-y-0 right-1 my-1 px-3 rounded-md text-sm text-slate-600 hover:bg-slate-100 z-10">
                 {{ showPassword ? 'Hide' : 'Show' }}
               </button>
             </div>
-            <p v-if="password && !passwordValid" class="mt-1 text-xs text-red-600">Password must be at least 6 characters.</p>
           </div>
 
-          <button
-            type="submit"
-            :disabled="isSubmitting || !formValid"
-            class="w-full rounded-xl bg-blue-600 px-4 py-2.5 font-medium text-white shadow hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
-          >
-            {{ isSubmitting ? 'Signing in…' : 'Sign in' }}
+          <div class="flex items-center justify-between text-sm pt-1">
+            <label class="inline-flex items-center gap-2 text-slate-600">
+              <input v-model="rememberMe" type="checkbox" class="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
+              <span>Remember me</span>
+            </label>
+            <a href="#" class="text-indigo-600 hover:underline">Forgot password?</a>
+          </div>
+
+          <button :disabled="isSubmitting" class="w-full inline-flex justify-center rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-4 py-2.5 disabled:opacity-50 mt-1">
+            <svg v-if="isSubmitting" class="animate-spin h-4 w-4 mr-2" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"/></svg>
+            Sign in
           </button>
 
-          <p v-if="errorMsg" class="text-sm text-red-600 text-center">{{ errorMsg }}</p>
-          <p v-if="successMsg" class="text-sm text-green-600 text-center">{{ successMsg }}</p>
+          <p v-if="errorMsg" class="text-sm text-rose-600 bg-rose-50 border border-rose-200 rounded-lg p-2">{{ errorMsg }}</p>
+
+          <p class="text-center text-sm text-slate-600">No account?
+            <RouterLink :to="{ name: 'register' }" class="text-indigo-600 hover:underline">Create one</RouterLink>
+          </p>
         </form>
-
-        <div class="mt-6 flex items-center justify-between text-sm text-slate-600">
-          <div class="flex items-center gap-2">
-            <input id="remember" type="checkbox" class="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
-            <label for="remember">Remember me</label>
-          </div>
-          <a href="#" class="text-blue-600 hover:text-blue-700">Forgot password?</a>
-        </div>
       </div>
-
-      <p class="text-center text-xs text-slate-500 mt-4">
-        By signing in, you agree to our <a class="underline hover:text-slate-700" href="#">Terms</a> and <a class="underline hover:text-slate-700" href="#">Privacy</a>.
-      </p>
     </div>
   </div>
 </template>
