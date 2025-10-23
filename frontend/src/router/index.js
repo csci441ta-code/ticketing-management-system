@@ -20,8 +20,11 @@ const router = createRouter({
 })
 
 router.beforeEach((to, from, next) => {
-  const hasToken = isTokenValid()
-  const role = getRoleFromToken() || 'user'
+  //const hasToken = isTokenValid()
+  //const role = getRoleFromToken() || 'user'
+  const hasToken = isTokenValid() 
+  const rawRole = getRoleFromToken()
+  const role = rawRole ? String(rawRole).toLowerCase() : 'user'
 
   // helper: only redirect if target !== current destination
   const sameTarget = (loc) => {
