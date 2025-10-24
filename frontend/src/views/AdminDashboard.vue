@@ -25,16 +25,33 @@
     <!-- Main area -->
     <div class="flex-1 flex flex-col">
       <!-- Top Bar -->
-      <header class="h-14 bg-[#0d4ea6] text-white flex items-center justify-end px-4 gap-4">
-        <span class="text-sm opacity-90">System Admin</span>
-        <!-- simple round icons -->
-        <div class="flex items-center gap-3">
-          <div class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">?</div>
-          <div class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">⚙</div>
-          <div class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">🔍</div>
-        </div>
-      </header>
-
+      //<header class="h-14 bg-[#0d4ea6] text-white flex items-center justify-end px-4 gap-4">
+        //<span class="text-sm opacity-90">System Admin</span>
+        //<!-- simple round icons -->
+        //<div class="flex items-center gap-3">
+          //<div class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">?</div>
+          //<div class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">⚙</div>
+          //<div class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">🔍</div>
+        //</div>
+      //</header>
+        <header class="h-14 bg-[#0d4ea6] text-white flex items-center justify-between px-4">
+            <div class="flex items-center gap-2">
+            <span class="text-sm opacity-90">System Admin</span>
+            </div>
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center" title="Help">?</div>
+                <div class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center" title="Settings">⚙</div>
+                <div class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center" title="Search">🔍</div>
+                <span class="mx-1 h-6 w-px bg-white/30"></span>
+                <button
+                    @click="onLogout"
+                    class="px-3 py-1.5 rounded-full bg-white/90 text-[#0d4ea6] hover:bg-white transition text-sm font-medium"
+                    title="Log out"
+                >
+                    Log out
+                </button>
+            </div>
+        </header>
       <!-- Content -->
       <div class="p-4">
         <!-- Controls row -->
@@ -91,7 +108,7 @@
                 <tr
                   v-for="t in visibleTickets"
                   :key="t.id"
-                  class="border-t border-slate-100 hover:bg-slate-50"
+                  class="border-t border-slate-100 odd:bg-white even:bg-slate-50/40 hover:bg-indigo-50/40 transition-colors"
                 >
                   <td class="p-3">
                     <input type="checkbox" class="h-4 w-4 rounded border-slate-300" />
@@ -127,9 +144,13 @@
 </template>
 
 <script setup>
-import { onMounted, ref, computed, watch } from "vue";
-//import { fetchTickets } from "@/services/tickets";
-import { fetchTickets } from "../services/tickets";
+import { ref, computed, onMounted, watch } from "vue"; 
+import { useRouter } from "vue-router"; 
+import { clearToken } from "../utils/jwt.js"; 
+//import { onMounted, ref, computed, watch } from "vue";
+import { fetchTickets } from "../services/tickets.js";
+
+const router = useRouter(); 
 // Left nav categories from the screenshot
 const navItems = [
   { key: "incidents", label: "Incidents" },
@@ -257,6 +278,11 @@ function onCreateNew() {
   // Route to your existing “new ticket” form if you have it:
   // router.push({ name: 'ticket-new' })
   alert("Hook this to your 'new ticket' flow.");
+}
+
+function onLogout() { 
+    clearToken(); 
+    router.push({ name: "login" });
 }
 
 // Optional: auto-reload when switching the left nav (if you want server-side filtering)
