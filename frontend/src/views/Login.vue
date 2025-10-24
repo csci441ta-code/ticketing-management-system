@@ -121,7 +121,6 @@ const handleLogin = async () => {
 </script>
 
 <style scoped>
-/* Optional subtle animations */
 input,
 button {
   transition: all 0.2s ease;

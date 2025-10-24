@@ -56,7 +56,7 @@ onMounted(async () => {
 
 
 function loadTickets() {
-  // Mock tickets; in production this will fetch from your backend
+  // Mock tickets; in production this will fetch from the backend
   tickets.value = [
     {
       id: 'TASK0000001',

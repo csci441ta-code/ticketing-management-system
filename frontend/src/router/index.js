@@ -26,7 +26,6 @@ router.beforeEach((to, from, next) => {
   const tokenValid = isTokenValid()
   const user = auth.loadUser()
 
-  // ✅ Handle public routes (login/register)
   if (to.meta.guestOnly) {
     if (tokenValid && user) {
       // If already logged in, redirect to appropriate dashboard
@@ -37,7 +36,6 @@ router.beforeEach((to, from, next) => {
     return next()
   }
 
-  // ✅ Handle protected routes
   if (to.meta.requiresAuth) {
     if (!tokenValid || !user || !user.email) {
       console.warn('No valid session, redirecting to /login')
@@ -45,7 +43,6 @@ router.beforeEach((to, from, next) => {
       return next('/login')
     }
 
-    // ✅ Role check
     const role = getRoleFromToken()?.toLowerCase()
     if (to.meta.roles && !to.meta.roles.includes(role)) {
       console.warn('Unauthorized role, redirecting to /login')
@@ -55,7 +52,6 @@ router.beforeEach((to, from, next) => {
     return next()
   }
 
-  // Default
   return next()
 })
 
