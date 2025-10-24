@@ -1,4 +1,4 @@
-//import '@fortawesome/fontawesome-free/css/all.min.css'
+import '@fortawesome/fontawesome-free/css/all.min.css'
 import './assets/tailwind.css' // Must come after FA
 import { createApp } from 'vue';
 import { createPinia } from 'pinia';
