@@ -1,42 +1,62 @@
 <template>
-  <div class="flex flex-col items-center justify-center min-h-screen bg-gray-100">
-    <div class="bg-white p-8 rounded-lg shadow-md w-full max-w-sm">
-      <h1 class="text-2xl font-semibold mb-6 text-center text-gray-800">Login</h1>
-
-      <form @submit.prevent="login">
-        <div class="mb-4">
-          <label class="block text-gray-700 mb-1" for="email">Email</label>
+  <div class="flex min-h-screen items-center justify-center bg-gray-100 dark:bg-gray-900 transition-colors duration-300">
+    <div class="bg-white dark:bg-gray-800 shadow-2xl rounded-2xl p-10 w-full max-w-md">
+      <h2 class="text-3xl font-bold text-center text-gray-800 dark:text-gray-100 mb-6">Login</h2>
+      <form @submit.prevent="handleLogin" class="space-y-6">
+        
+        <!-- Email -->
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Email</label>
           <input
-            id="email"
             v-model="email"
             type="email"
             required
-            class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="you@example.com"
+            class="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none dark:bg-gray-700 dark:text-gray-100"
           />
         </div>
 
-        <div class="mb-4">
-          <label class="block text-gray-700 mb-1" for="password">Password</label>
-          <input
-            id="password"
-            v-model="password"
-            type="password"
-            required
-            class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
+        <!-- Password -->
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Password</label>
+          <div class="relative">
+            <input
+              :type="showPassword ? 'text' : 'password'"
+              v-model="password"
+              required
+              placeholder="Enter your password"
+              class="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none dark:bg-gray-700 dark:text-gray-100"
+            />
+            <button
+              type="button"
+              @click="togglePassword"
+              class="absolute inset-y-0 right-0 px-3 text-sm text-indigo-600 dark:text-indigo-400 hover:underline focus:outline-none"
+            >
+              {{ showPassword ? 'Hide' : 'Show' }}
+            </button>
+          </div>
         </div>
 
+        <!-- Login Button -->
         <button
           type="submit"
-          class="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 transition"
+          class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-lg font-semibold shadow-md transition duration-200"
         >
           Log In
         </button>
 
-        <p v-if="errorMessage" class="text-red-600 mt-4 text-center">
-          {{ errorMessage }}
-        </p>
       </form>
+
+      <!-- Register Link -->
+      <p class="text-center text-sm text-gray-600 dark:text-gray-400 mt-6">
+        Don’t have an account?
+        <router-link
+          to="/register"
+          class="text-indigo-600 dark:text-indigo-400 hover:underline font-medium"
+        >
+          Register here
+        </router-link>
+      </p>
     </div>
   </div>
 </template>
@@ -49,53 +69,61 @@ import { useAuthStore } from '../store/auth.js'
 
 const email = ref('')
 const password = ref('')
+const showPassword = ref(false)
+
 const errorMessage = ref('')
 const router = useRouter()
 const auth = useAuthStore()
 
-async function login() {
-  errorMessage.value = ''
-
-  try {
-    // 👇 Adjust this URL to match your backend login endpoint
-    const { data } = await api.post('/auth/login', {
-      email: email.value,
-      password: password.value,
-    })
-
-    // Backend should return JSON with fields like:
-    // { email, name, role, token }
-    if (!data || !data.user || !data.user.email) {
-      throw new Error('Invalid response from server.')
-    }
-
-    
-    // after you receive `data` from POST /auth/login
-    const rawRole = (data?.user?.role ?? data?.role ?? '').toString();
-    const role = rawRole.toLowerCase();  // ← normalize
-
-    // Persist user in the same place the app expects
-    auth.setUser({
-        name: data.user.displayName || data.user.email,
-        email: data.user.email,
-        role, // ← store the LOWERCASE role
-    });
-    localStorage.setItem('user', JSON.stringify(auth.user));
-    
-    // Persist tokens
-    if (data.accessToken) localStorage.setItem('accessToken', data.accessToken);
-    if (data.refreshToken) localStorage.setItem('refreshToken', data.refreshToken);
-
-    // Redirect based on the normalized role
-    if (role === 'admin') {
-        router.push({ name: 'admin-app' });
-    } else {
-        router.push({ name: 'user-app' });
-    }
-  } catch (err) {
-    console.error('Login failed:', err)
-    errorMessage.value =
-      err.response?.data?.message || 'Invalid credentials or server error.'
-  }
+const togglePassword = () => {
+    showPassword.value = !showPassword.value 
 }
+
+const handleLogin = async () => {
+    errorMessage.value = '' 
+    
+    try {
+      const { data } = await api.post('/auth/login', { 
+        email: email.value,
+        password: password.value,
+      })
+      
+      if (!data || !data.user || !data.user.email) { 
+        throw new Error('Invalid response from server.') 
+      }
+      
+      const rawRole = (data?.user?.role ?? data?.role ?? '').toString();      
+      const role = rawRole.toLowerCase(); 
+      
+      auth.setUser({
+          name: data.user.displayName || data.user.email,
+          email: data.user.email,
+          role, 
+      });
+      localStorage.setItem('user', JSON.stringify(auth.user));
+      
+      if (data.accessToken) localStorage.setItem('accessToken', data.accessToken);
+      if (data.refreshToken) localStorage.setItem('refreshToken', data.refreshToken); 
+      
+      if (role === 'admin') { 
+        router.push({ name: 'admin-app' });
+      } else { 
+        router.push({ name: 'user-app' }); 
+      } 
+    } catch (error) { 
+        console.error('Login failed:', error)
+        errorMessage.value = error.response?.data?.message || 'Invalid credentials or server error.'
+    }
+    
+}
+
+
 </script>
+
+<style scoped>
+/* Optional subtle animations */
+input,
+button {
+  transition: all 0.2s ease;
+}
+</style>
