@@ -22,42 +22,38 @@ const router = createRouter({
 })
 
 router.beforeEach((to, from, next) => {
-  const auth = useAuthStore()
-  const tokenValid = isTokenValid()
-  const user = auth.loadUser()
+  //const hasToken = isTokenValid()
+  //const role = getRoleFromToken() || 'user'
+  const hasToken = isTokenValid() 
+  const rawRole = getRoleFromToken()
+  const role = rawRole ? String(rawRole).toLowerCase() : 'user'
 
-  // ✅ Handle public routes (login/register)
-  if (to.meta.guestOnly) {
-    if (tokenValid && user) {
-      // If already logged in, redirect to appropriate dashboard
-      const role = getRoleFromToken()?.toLowerCase()
-      if (role === 'admin') return next('/admin')
-      else return next('/app')
-    }
-    return next()
+  // helper: only redirect if target !== current destination
+  const sameTarget = (loc) => {
+    const a = typeof loc === 'string' ? router.resolve(loc) : router.resolve(loc)
+    const b = router.resolve(to)
+    return a.fullPath === b.fullPath
   }
 
-  // ✅ Handle protected routes
+  if (to.meta.guestOnly && hasToken) {
+    // Already logged in -> route to appropriate home
+    const target = role === 'admin' ? { name: 'admin-app' } : { name: 'user-app' }
+    return sameTarget(target) ? next() : next(target)
+  }
+
   if (to.meta.requiresAuth) {
-    if (!tokenValid || !user || !user.email) {
-      console.warn('No valid session, redirecting to /login')
-      auth.logout()
-      return next('/login')
+    if (!hasToken) {
+      const target = { name: 'login', query: { redirect: to.fullPath } }
+      return sameTarget(target) ? next() : next(target)
     }
-
-    // ✅ Role check
-    const role = getRoleFromToken()?.toLowerCase()
     if (to.meta.roles && !to.meta.roles.includes(role)) {
-      console.warn('Unauthorized role, redirecting to /login')
-      return next('/login')
+      // Not authorized for this route -> send to their home
+      const target = role === 'admin' ? { name: 'admin-app' } : { name: 'user-app' }
+      return sameTarget(target) ? next() : next(target)
     }
-
-    return next()
   }
 
-  // Default
   return next()
 })
-
 
 export default router

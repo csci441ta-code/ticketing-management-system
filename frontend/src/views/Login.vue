@@ -1,98 +1,101 @@
-<script setup>
-import { ref, onMounted } from 'vue'
-import { useRouter, useRoute, RouterLink } from 'vue-router'
-import { apiPost } from '../utils/api.js'
-import { setToken, setRefreshToken, getRoleFromToken } from '../utils/jwt.js'
-
-const router = useRouter()
-const route = useRoute()
-
-const email = ref(route.query.email ? String(route.query.email) : '')
-const password = ref('')
-const showPassword = ref(false)
-const rememberMe = ref(false)
-const isSubmitting = ref(false)
-const errorMsg = ref('')
-
-onMounted(() => {
-  const saved = localStorage.getItem('rememberEmail')
-  if (saved) {
-    email.value = saved
-    rememberMe.value = true
-  }
-})
-
-async function onSubmit() {
-  errorMsg.value = ''
-  isSubmitting.value = true
-  try {
-    const data = await apiPost('/auth/login', { email: email.value, password: password.value })
-    if (!data) throw new Error('No response')
-    if (data.accessToken) setToken(data.accessToken)
-    if (data.refreshToken) setRefreshToken(data.refreshToken)
-
-    if (rememberMe.value) localStorage.setItem('rememberEmail', email.value)
-    else localStorage.removeItem('rememberEmail')
-
-    const role = getRoleFromToken() || (data.user?.role ?? 'USER')
-    if (String(role).toLowerCase() === 'admin') router.push({ name: 'admin-app' })
-    else router.push({ name: 'user-app' })
-  } catch (e) {
-    errorMsg.value = e?.message || 'Login failed'
-  } finally {
-    isSubmitting.value = false
-  }
-}
-</script>
-
 <template>
-  <div class="min-h-screen bg-slate-100 flex items-center justify-center p-6">
-    <div class="w-full max-w-md">
-      <div class="bg-white rounded-xl shadow-lg border border-slate-200">
-        <div class="px-6 pt-6">
-          <h1 class="text-xl font-semibold text-slate-800">Sign in</h1>
-          <p class="text-slate-500 text-sm">Access your tickets and dashboard.</p>
+  <div class="flex flex-col items-center justify-center min-h-screen bg-gray-100">
+    <div class="bg-white p-8 rounded-lg shadow-md w-full max-w-sm">
+      <h1 class="text-2xl font-semibold mb-6 text-center text-gray-800">Login</h1>
+
+      <form @submit.prevent="login">
+        <div class="mb-4">
+          <label class="block text-gray-700 mb-1" for="email">Email</label>
+          <input
+            id="email"
+            v-model="email"
+            type="email"
+            required
+            class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
         </div>
 
-        <form class="px-6 pb-6 pt-4 space-y-4" @submit.prevent="onSubmit">
-          <div>
-            <label class="block text-sm font-medium text-slate-700">Email</label>
-            <input type="email" v-model="email" autocomplete="email" required
-              class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
-          </div>
+        <div class="mb-4">
+          <label class="block text-gray-700 mb-1" for="password">Password</label>
+          <input
+            id="password"
+            v-model="password"
+            type="password"
+            required
+            class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
 
-          <div>
-            <label class="block text-sm font-medium text-slate-700">Password</label>
-            <div class="mt-1 relative">
-              <input :type="showPassword ? 'text' : 'password'" v-model="password" autocomplete="current-password" required
-                class="w-full rounded-lg border border-slate-300 px-3 py-2 pr-20 focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
-              <button type="button" @click="showPassword = !showPassword"
-                class="absolute inset-y-0 right-1 my-1 px-3 rounded-md text-sm text-slate-600 hover:bg-slate-100 z-10">
-                {{ showPassword ? 'Hide' : 'Show' }}
-              </button>
-            </div>
-          </div>
+        <button
+          type="submit"
+          class="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 transition"
+        >
+          Log In
+        </button>
 
-          <div class="flex items-center justify-between text-sm pt-1">
-            <label class="inline-flex items-center gap-2 text-slate-600">
-              <input v-model="rememberMe" type="checkbox" class="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
-              <span>Remember me</span>
-            </label>
-            <a href="#" class="text-indigo-600 hover:underline">Forgot password?</a>
-          </div>
-
-          <button :disabled="isSubmitting" class="w-full inline-flex justify-center rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-4 py-2.5 disabled:opacity-50 mt-1">
-            <svg v-if="isSubmitting" class="animate-spin h-4 w-4 mr-2" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"/></svg>
-            Sign in
-          </button>
-
-          <p v-if="errorMsg" class="text-sm text-rose-600 bg-rose-50 border border-rose-200 rounded-lg p-2">{{ errorMsg }}</p>
-
-          <p class="text-center text-sm text-slate-600">No account?
-            <RouterLink :to="{ name: 'register' }" class="text-indigo-600 hover:underline">Create one</RouterLink>
-          </p>
-        </form>
-      </div>
+        <p v-if="errorMessage" class="text-red-600 mt-4 text-center">
+          {{ errorMessage }}
+        </p>
+      </form>
     </div>
   </div>
 </template>
+
+<script setup>
+import { ref } from 'vue'
+import api from '../services/api.js'
+import { useRouter } from 'vue-router'
+import { useAuthStore } from '../store/auth.js'
+
+const email = ref('')
+const password = ref('')
+const errorMessage = ref('')
+const router = useRouter()
+const auth = useAuthStore()
+
+async function login() {
+  errorMessage.value = ''
+
+  try {
+    // 👇 Adjust this URL to match your backend login endpoint
+    const { data } = await api.post('/auth/login', {
+      email: email.value,
+      password: password.value,
+    })
+
+    // Backend should return JSON with fields like:
+    // { email, name, role, token }
+    if (!data || !data.user || !data.user.email) {
+      throw new Error('Invalid response from server.')
+    }
+
+    
+    // after you receive `data` from POST /auth/login
+    const rawRole = (data?.user?.role ?? data?.role ?? '').toString();
+    const role = rawRole.toLowerCase();  // ← normalize
+
+    // Persist user in the same place the app expects
+    auth.setUser({
+        name: data.user.displayName || data.user.email,
+        email: data.user.email,
+        role, // ← store the LOWERCASE role
+    });
+    localStorage.setItem('user', JSON.stringify(auth.user));
+    
+    // Persist tokens
+    if (data.accessToken) localStorage.setItem('accessToken', data.accessToken);
+    if (data.refreshToken) localStorage.setItem('refreshToken', data.refreshToken);
+
+    // Redirect based on the normalized role
+    if (role === 'admin') {
+        router.push({ name: 'admin-app' });
+    } else {
+        router.push({ name: 'user-app' });
+    }
+  } catch (err) {
+    console.error('Login failed:', err)
+    errorMessage.value =
+      err.response?.data?.message || 'Invalid credentials or server error.'
+  }
+}
+</script>
