@@ -121,38 +121,21 @@ router.get('/:id', async (req, res) => {
  */
 router.post('/', async (req, res) => {
   try {
-      const { 
-        title,
-        description, 
-        assigneeId = null, 
-        watchers = [], 
-        dueAt = null 
+    const {
+      title,
+      description,
+      priority = 'MEDIUM',
+      type = 'TASK',
+      reporterId = null,
+      assigneeId = null,
+      watchers = [],
+      dueAt = null,
+      actorId = reporterId || null, // who to record in history; optional
     } = req.body || {};
-    // enums may arrive in mixed case; normalize them here
-     const toEnum = (v, d) => String(v ?? d).toUpperCase();
-     let priority = toEnum(req.body?.priority, 'MEDIUM'); // LOW|MEDIUM|HIGH|CRITICAL
-     let type = toEnum(req.body?.type, 'TASK');           // TASK|INCIDENT|...
-
-
-
-
-
-    // reporter must be the authenticated user; never trust client for this
-    const reporterId = req.user?.id;
-    const actorId = req.user?.id ?? null;
-    if (!reporterId) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
 
     if (!title || typeof title !== 'string') {
       return res.status(400).json({ error: 'title is required' });
     }
-    
-    // normalize enums to Prisma’s expected uppercase values
-    const norm = (v, d) => String(v ?? d).toUpperCase();
-    priority = norm(priority, 'MEDIUM'); // LOW/MEDIUM/HIGH/CRITICAL
-    type = norm(type, 'TASK');           // TASK/INCIDENT/CHANGE/PROBLEM/...
-
 
     const created = await prisma.ticket.create({
       data: {
@@ -175,8 +158,7 @@ router.post('/', async (req, res) => {
 
     res.status(201).json(created);
   } catch (err) {
-    // Make server errors more actionable during dev
-    console.error('POST /tickets error', err?.code, err?.message, err);
+    console.error('POST /tickets error', err);
     res.status(500).json({ error: 'Failed to create ticket' });
   }
 });

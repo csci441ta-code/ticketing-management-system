@@ -95,29 +95,16 @@ const handleLogin = async () => {
       const rawRole = (data?.user?.role ?? data?.role ?? '').toString();      
       const role = rawRole.toLowerCase(); 
       
-      let userId = data.user.id;
-      try {
-        const token = data.accessToken || localStorage.getItem('accessToken');
-        if (token) {
-          const payload = JSON.parse(atob(token.split('.')[1]));
-          if (payload?.sub) {
-            userId = payload.sub;
-          }
-        }
-      } catch (e) {
-        console.warn('JWT decode failed:', e);
-      }
-
       auth.setUser({
-        id: userId,
+        id: data.user.id,                             
         name: data.user.displayName || data.user.email,
         email: data.user.email,
         role,
       });
       localStorage.setItem('user', JSON.stringify(auth.user));
-
+      
       if (data.accessToken) localStorage.setItem('accessToken', data.accessToken);
-      if (data.refreshToken) localStorage.setItem('refreshToken', data.refreshToken);
+      if (data.refreshToken) localStorage.setItem('refreshToken', data.refreshToken); 
       
       if (role === 'admin') { 
         router.push({ name: 'admin-app' });

@@ -35,7 +35,7 @@ const props = defineProps({
   tickets: Array,
   search: String,
   assignedOnly: Boolean,
-  currentUser: String
+  currentUser: Object
 })
 
 const sortKey = ref('')
@@ -65,10 +65,9 @@ const sortedTickets = computed(() => {
       String(v).toLowerCase().includes(props.search.toLowerCase())
     )
 
-    const matchesAssigned =
-      !props.assignedOnly ||
-      (props.currentUser?.email &&
-        t.assignee.toLowerCase() === props.currentUser.email.toLowerCase())
+    const matchesAssigned = 
+        !props.assignedOnly || (props.currentUser?.email && t.requester?.toLowerCase() === props.currentUser.email.toLowerCase())
+
 
     return matchesSearch && matchesAssigned
   })
