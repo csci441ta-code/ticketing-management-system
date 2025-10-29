@@ -15,7 +15,7 @@
         />
 
         <TicketTable
-          :tickets="filteredTickets"
+          :tickets="tickets"
           :search="searchQuery"
           :currentUser="auth.user"
         />
@@ -58,12 +58,13 @@ const filteredTickets = computed(() =>
 
 async function refreshTickets() {
     try {
-        const { data } = await api.get('/tickets', {
-        params: { reportedBy: auth.user?.id }  // backend supports this filter
-    })
-    tickets.value = Array.isArray(data) ? data : (data?.tickets || [])
+    const token = localStorage.getItem('accessToken'); 
+    const { data } = await api.get('/tickets', {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    tickets.value = Array.isArray(data) ? data : (data?.items || []);
   } catch (error) {
-    console.error('Failed to load tickets:', error)
+    console.error('Failed to load tickets:', error);
   }
 }
 

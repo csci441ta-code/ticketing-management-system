@@ -8,7 +8,6 @@ const api = axios.create({
 });
 
 api.interceptors.request.use((config) => {
-  // Adapt this to wherever you store the token after login
   const token = localStorage.getItem("accessToken");
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;

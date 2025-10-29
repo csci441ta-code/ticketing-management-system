@@ -14,15 +14,16 @@
       <tbody>
         <tr v-for="ticket in sortedTickets" :key="ticket.id">
           <td>{{ ticket.id }}</td>
-          <td>{{ ticket.opened }}</td>
+          <td>{{ new Date(ticket.createdAt).toLocaleString() }}</td>
+          <td>{{ ticket.title }}</td>
           <td>{{ ticket.description }}</td>
-          <td>{{ ticket.requester }}</td>
+          <td>{{ ticket.reporter?.displayName }}</td>
           <td>
             <span :class="'priority ' + ticket.priority.toLowerCase()">
               {{ ticket.priority }}
             </span>
           </td>
-          <td>{{ ticket.assignee }}</td>
+          <td>{{ ticket.assignee?.displayName || 'NULL' }}</td>
         </tr>
       </tbody>
     </table>
@@ -44,6 +45,7 @@ const sortOrder = ref('asc')
 const headers = [
   { key: 'id', label: 'Number' },
   { key: 'opened', label: 'Opened' },
+  { key: 'title', label: 'Title'},
   { key: 'description', label: 'Description' },
   { key: 'requester', label: 'Requester' },
   { key: 'priority', label: 'Priority' },

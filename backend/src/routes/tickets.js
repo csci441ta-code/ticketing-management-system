@@ -47,17 +47,40 @@ function diffTicket(before, after) {
 router.get('/', async (req, res) => {
   try {
     const { reportedBy, assignedTo, watchingUser, status, priority, type, search } = req.query;
+    
+
+    const where = {deletedAt: null};
+    
+    
+
+    // Secure user-based filtering
+    const userId = req.user?.id;
+    const role = req.user?.role || 'USER';
+    console.log(req.user?.role)
+    // Regular users only see their own tickets
+    if (role === 'USER') {
+        where.reporterId = userId;
+    } else {
+        // Admins can still filter if params are passed
+        if (reportedBy) where.reporterId = reportedBy;
+        if (assignedTo) where.assigneeId = assignedTo;
+    }
+    console.log('🎯 req.user.id =', req.user?.id);
+    console.log('📦 Filtering with where =', where);
     const page = toInt(req.query.page, 1);
     const pageSize = Math.min(toInt(req.query.pageSize, 20), 100);
-
-    const where = { deletedAt: null };
-
-    if (reportedBy) where.reporterId = reportedBy;
-    if (assignedTo) where.assigneeId = assignedTo;
-    if (watchingUser) where.watchers = { some: { userId: watchingUser } };
+    
+    //if (reportedBy) where.reporterId = reportedBy;
+    //if (assignedTo) where.assigneeId = assignedTo;
+    if (watchingUser) {
+        where.watchers = { 
+            some: { userId: watchingUser }, 
+        };
+    }
     if (status) where.status = status;
     if (priority) where.priority = priority;
     if (type) where.type = type;
+
 
     if (search) {
       where.AND = (where.AND || []).concat({
@@ -84,8 +107,11 @@ router.get('/', async (req, res) => {
       }),
       prisma.ticket.count({ where }),
     ]);
-
+    
+    console.log('📤 Returning items:', items.length, 'tickets');
+    if (items.length > 0) console.log('🧾 Sample ticket:', items[0]);
     res.json({ page, pageSize, total, items });
+    
   } catch (err) {
     console.error('GET /tickets error', err);
     res.status(500).json({ error: 'Failed to fetch tickets' });

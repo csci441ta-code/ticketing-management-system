@@ -37,7 +37,7 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    command: sh -lc "npm i && npm run dev"
+    command: sh -lc "npm i && npx prisma generate --schema=./prisma/schema.prisma && npm run dev"
     ports:
       - "${BACKEND_PORT}:3000"
     volumes:
