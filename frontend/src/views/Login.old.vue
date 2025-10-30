@@ -1,124 +1,129 @@
-<script setup>
-import { ref, computed, onMounted } from 'vue'
-import { apiPost } from '../utils/api.js'
-import { decodeToken } from '../utils/jwt.js'
-
-const email = ref('')
-const password = ref('')
-const showPassword = ref(false)
-const isSubmitting = ref(false)
-const errorMsg = ref('')
-const successMsg = ref('')
-
-const emailValid = computed(() => /.+@.+\..+/.test(email.value))
-const passwordValid = computed(() => password.value.length >= 6)
-const formValid = computed(() => emailValid.value && passwordValid.value)
-
-function persistToken(accessToken) {
-  localStorage.setItem('accessToken', accessToken)
-  const payload = decodeToken(accessToken)
-  if (payload) {
-    localStorage.setItem('userEmail', payload.email || '')
-    localStorage.setItem('tokenExp', payload.exp ? String(payload.exp) : '')
-  }
-}
-
-async function handleLogin() {
-  errorMsg.value = ''
-  successMsg.value = ''
-  if (!formValid.value) {
-    errorMsg.value = 'Please provide a valid email and a password (6+ chars).'
-    return
-  }
-  isSubmitting.value = true
-  try {
-    const { accessToken } = await apiPost('/auth/login', { email: email.value, password: password.value })
-    persistToken(accessToken)
-    successMsg.value = 'Logged in successfully.'
-    // You can emit or navigate here; for now we just show a message.
-  } catch (err) {
-    errorMsg.value = err?.message || 'Login failed.'
-  } finally {
-    isSubmitting.value = false
-  }
-}
-
-// If user already has a token, optionally prefill email
-onMounted(() => {
-  const stored = localStorage.getItem('userEmail')
-  if (stored) email.value = stored
-})
-</script>
-
 <template>
-  <div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 px-4">
-    <div class="w-full max-w-md">
-      <div class="bg-white shadow-xl rounded-2xl p-8 border border-slate-200">
-        <div class="text-center mb-6">
-          <h1 class="text-2xl font-bold tracking-tight text-slate-900">Sign in to Ticketing</h1>
-          <p class="text-slate-500 text-sm mt-1">Access your dashboard and manage tickets</p>
+  <div class="flex min-h-screen items-center justify-center bg-gray-100 dark:bg-gray-900 transition-colors duration-300">
+    <div class="bg-white dark:bg-gray-800 shadow-2xl rounded-2xl p-10 w-full max-w-md">
+      <h2 class="text-3xl font-bold text-center text-gray-800 dark:text-gray-100 mb-6">Login</h2>
+      <form @submit.prevent="handleLogin" class="space-y-6">
+        
+        <!-- Email -->
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Email</label>
+          <input
+            v-model="email"
+            type="email"
+            required
+            placeholder="you@example.com"
+            class="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none dark:bg-gray-700 dark:text-gray-100"
+          />
         </div>
 
-        <form @submit.prevent="handleLogin" class="space-y-4">
-          <div>
-            <label for="email" class="block text-sm font-medium text-slate-700">Email</label>
+        <!-- Password -->
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Password</label>
+          <div class="relative">
             <input
-              id="email"
-              v-model="email"
-              type="email"
-              placeholder="you@example.com"
-              autocomplete="username"
-              class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-slate-900 placeholder-slate-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              :type="showPassword ? 'text' : 'password'"
+              v-model="password"
+              required
+              placeholder="Enter your password"
+              class="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none dark:bg-gray-700 dark:text-gray-100"
             />
-            <p v-if="email && !emailValid" class="mt-1 text-xs text-red-600">Please enter a valid email.</p>
+            <button
+              type="button"
+              @click="togglePassword"
+              class="absolute inset-y-0 right-0 px-3 text-sm text-indigo-600 dark:text-indigo-400 hover:underline focus:outline-none"
+            >
+              {{ showPassword ? 'Hide' : 'Show' }}
+            </button>
           </div>
-
-          <div>
-            <label for="password" class="block text-sm font-medium text-slate-700">Password</label>
-            <div class="mt-1 relative">
-              <input
-                :type="showPassword ? 'text' : 'password'"
-                id="password"
-                v-model="password"
-                placeholder="••••••••"
-                autocomplete="current-password"
-                class="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-slate-900 placeholder-slate-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 pr-12"
-              />
-              <button
-                type="button"
-                class="absolute inset-y-0 right-2 px-2 text-sm text-slate-500 hover:text-slate-700"
-                @click="showPassword = !showPassword"
-              >
-                {{ showPassword ? 'Hide' : 'Show' }}
-              </button>
-            </div>
-            <p v-if="password && !passwordValid" class="mt-1 text-xs text-red-600">Password must be at least 6 characters.</p>
-          </div>
-
-          <button
-            type="submit"
-            :disabled="isSubmitting || !formValid"
-            class="w-full rounded-xl bg-blue-600 px-4 py-2.5 font-medium text-white shadow hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
-          >
-            {{ isSubmitting ? 'Signing in…' : 'Sign in' }}
-          </button>
-
-          <p v-if="errorMsg" class="text-sm text-red-600 text-center">{{ errorMsg }}</p>
-          <p v-if="successMsg" class="text-sm text-green-600 text-center">{{ successMsg }}</p>
-        </form>
-
-        <div class="mt-6 flex items-center justify-between text-sm text-slate-600">
-          <div class="flex items-center gap-2">
-            <input id="remember" type="checkbox" class="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
-            <label for="remember">Remember me</label>
-          </div>
-          <a href="#" class="text-blue-600 hover:text-blue-700">Forgot password?</a>
         </div>
-      </div>
 
-      <p class="text-center text-xs text-slate-500 mt-4">
-        By signing in, you agree to our <a class="underline hover:text-slate-700" href="#">Terms</a> and <a class="underline hover:text-slate-700" href="#">Privacy</a>.
+        <!-- Login Button -->
+        <button
+          type="submit"
+          class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-lg font-semibold shadow-md transition duration-200"
+        >
+          Log In
+        </button>
+
+      </form>
+
+      <!-- Register Link -->
+      <p class="text-center text-sm text-gray-600 dark:text-gray-400 mt-6">
+        Don’t have an account?
+        <router-link
+          to="/register"
+          class="text-indigo-600 dark:text-indigo-400 hover:underline font-medium"
+        >
+          Register here
+        </router-link>
       </p>
     </div>
   </div>
 </template>
+
+<script setup>
+import { ref } from 'vue'
+import api from '../services/api.js'
+import { useRouter } from 'vue-router'
+import { useAuthStore } from '../store/auth.js'
+
+const email = ref('')
+const password = ref('')
+const showPassword = ref(false)
+
+const errorMessage = ref('')
+const router = useRouter()
+const auth = useAuthStore()
+
+const togglePassword = () => {
+    showPassword.value = !showPassword.value 
+}
+
+const handleLogin = async () => {
+    errorMessage.value = '' 
+    
+    try {
+      const { data } = await api.post('/auth/login', { 
+        email: email.value,
+        password: password.value,
+      })
+      
+      if (!data || !data.user || !data.user.email) { 
+        throw new Error('Invalid response from server.') 
+      }
+      
+      const rawRole = (data?.user?.role ?? data?.role ?? '').toString();      
+      const role = rawRole.toLowerCase(); 
+      
+      auth.setUser({
+        id: data.user.id,                             
+        name: data.user.displayName || data.user.email,
+        email: data.user.email,
+        role,
+      });
+      localStorage.setItem('user', JSON.stringify(auth.user));
+      
+      if (data.accessToken) localStorage.setItem('accessToken', data.accessToken);
+      if (data.refreshToken) localStorage.setItem('refreshToken', data.refreshToken); 
+      
+      if (role === 'admin') { 
+        router.push({ name: 'admin-app' });
+      } else { 
+        router.push({ name: 'user-app' }); 
+      } 
+    } catch (error) { 
+        console.error('Login failed:', error)
+        errorMessage.value = error.response?.data?.message || 'Invalid credentials or server error.'
+    }
+    
+}
+
+
+</script>
+
+<style scoped>
+input,
+button {
+  transition: all 0.2s ease;
+}
+</style>

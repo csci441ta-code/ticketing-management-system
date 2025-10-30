@@ -37,7 +37,7 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    command: sh -lc "npm i && npm run dev"
+    command: sh -lc "npm i && npx prisma generate --schema=./prisma/schema.prisma && npm run dev"
     ports:
       - "${BACKEND_PORT}:3000"
     volumes:
@@ -51,7 +51,7 @@ services:
     container_name: frontend
     environment:
       FRONTEND_PORT: ${FRONTEND_PORT}
-      VITE_API_BASE: http://localhost:${BACKEND_PORT}
+      VITE_API_BASE: http://localhost:${BACKEND_PORT}/api
       CHOKIDAR_USEPOLLING: "1"
     command: sh -lc "npm i && npm run dev -- --host 0.0.0.0 --port ${FRONTEND_PORT}"
     ports:

@@ -11,6 +11,8 @@ const prisma = new PrismaClient();
 
 const router = express.Router();
 
+
+
 const ACCESS_TTL = process.env.JWT_EXPIRES_IN || '1h';
 const REFRESH_TTL = process.env.REFRESH_EXPIRES_IN || '7d';
 const REFRESH_SECRET = process.env.REFRESH_JWT_SECRET || process.env.JWT_SECRET;
@@ -34,14 +36,82 @@ function clientMeta(req) {
   };
 }
 
+const normalizeEmail = (e) => (e || '').trim().toLowerCase();
+
+// POST /api/auth/register
+router.post('/register', async (req, res) => {
+  try {
+    const { firstName, lastName, displayName, email, password } = req.body || {};
+    const normEmail = normalizeEmail(email);
+
+    if (!normEmail || !password) {
+      return res.status(400).json({ error: 'email and password required' });
+    }
+
+    // Reject duplicates early
+    const existing = await prisma.user.findUnique({ where: { email: normEmail } });
+    if (existing && !existing.deletedAt) {
+      return res.status(409).json({ error: 'Email already in use' });
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    const data = {
+      email: normEmail,
+      passwordHash,
+      role: 'USER',
+    };
+
+    // Include optionals only if they’re present in the payload.
+    if (typeof firstName !== 'undefined') data.firstName = firstName || null;
+    if (typeof lastName !== 'undefined') data.lastName = lastName || null;
+
+    const computedDisplay =
+      displayName?.trim() ||
+      (firstName && lastName ? `${firstName} ${lastName}` :
+       firstName || normEmail.split('@')[0]);
+    if (computedDisplay) data.displayName = computedDisplay;
+
+    const user = await prisma.user.create({
+      data,
+      select: { id: true, email: true, role: true, displayName: true },
+    });
+
+    return res.status(201).json({ ok: true, user });
+  } catch (e) {
+    // Prisma error decoding for clearer client responses
+    if (e.code === 'P2002') {
+      // unique constraint
+      return res.status(409).json({ error: 'Email already in use' });
+    }
+    if (e.code === 'P2000') {
+      // value too long for column type
+      return res.status(400).json({ error: 'One of the fields is too long' });
+    }
+    if (e.code === 'P2003') {
+      // foreign key constraint (unlikely here)
+      return res.status(400).json({ error: 'Invalid related data' });
+    }
+    if (e.code === 'P2009' || e.code === 'P2010') {
+      // invalid data / raw query error
+      return res.status(400).json({ error: 'Invalid registration data' });
+    }
+    console.error('POST /api/auth/register error:', e);
+    return res.status(500).json({ error: 'Registration failed' });
+  }
+});
+
+
+
 // POST /api/auth/login  { email, password }
 router.post('/login', async (req, res) => {
   try {
     console.log("req.body  ", req.body )
     const { email, password } = req.body || {};
-    if (!email || !password) return res.status(400).json({ error: 'email and password required', ok: req.body });
+    const normEmail = normalizeEmail(email);
+    if (!normEmail || !password) return res.status(400).json({ error: 'email and password required', ok: req.body });
 
-    const user = await prisma.user.findUnique({ where: { email } });
+    const user = await prisma.user.findUnique({ where: { email:normEmail } });
     if (!user || user.deletedAt) return res.status(401).json({ error: 'Invalid credentials' });
     if (user.isActive === false) return res.status(403).json({ error: 'User disabled' });
 
