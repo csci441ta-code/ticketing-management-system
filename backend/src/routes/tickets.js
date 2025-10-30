@@ -65,8 +65,8 @@ router.get('/', async (req, res) => {
         if (reportedBy) where.reporterId = reportedBy;
         if (assignedTo) where.assigneeId = assignedTo;
     }
-    console.log('🎯 req.user.id =', req.user?.id);
-    console.log('📦 Filtering with where =', where);
+    console.log('req.user.id =', req.user?.id);
+    console.log('Filtering with where =', where);
     const page = toInt(req.query.page, 1);
     const pageSize = Math.min(toInt(req.query.pageSize, 20), 100);
     
@@ -108,7 +108,7 @@ router.get('/', async (req, res) => {
       prisma.ticket.count({ where }),
     ]);
     
-    console.log('📤 Returning items:', items.length, 'tickets');
+    console.log('Returning items:', items.length, 'tickets');
     if (items.length > 0) console.log('🧾 Sample ticket:', items[0]);
     res.json({ page, pageSize, total, items });
     

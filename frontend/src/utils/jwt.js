@@ -38,7 +38,6 @@ export function getRoleFromToken() {
   const t = getStoredToken()
   const dec = t ? safeDecode(t) : null
   if (!dec) return null
-  // Common claim names: "role", "roles", "authorities"
   if (typeof dec.role === 'string') return dec.role
   if (Array.isArray(dec.roles) && dec.roles.length) return dec.roles[0]
   if (Array.isArray(dec.authorities) && dec.authorities.length) return dec.authorities[0]

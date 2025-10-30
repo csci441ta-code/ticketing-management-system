@@ -5,7 +5,7 @@ module.exports = function requireAuth(req, res, next) {
     if (req.method === 'OPTIONS') return next(); // Allow preflight
 
     const header = req.headers.authorization || '';
-    console.log('🔹 Incoming Authorization header:', header);
+    console.log('Incoming Authorization header:', header);
     if (!header.startsWith('Bearer ')) {
       console.warn('Missing or invalid Authorization header');
       return res.status(401).json({ error: 'Missing or invalid Bearer token' });
@@ -29,7 +29,7 @@ module.exports = function requireAuth(req, res, next) {
       console.warn('Token payload missing sub');
       return res.status(401).json({ error: 'Invalid token payload' });
     }
-    console.log('✅ Verified payload:', payload);
+    console.log('Verified payload:', payload);
 
     req.user = {
       id: payload.sub,
