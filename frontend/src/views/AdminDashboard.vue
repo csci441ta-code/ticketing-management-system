@@ -10,8 +10,9 @@
       <div class="dashboard-content">
         <FilterBar
           @search="handleSearch"
-          @toggle-assigned="toggleAssigned"
-          @create="createTicket"
+          @create="showNewTicketModal = true"
+          
+          
         />
         <TicketTable
           :tickets="tickets"
@@ -19,13 +20,19 @@
           :assignedOnly="assignedOnly"
           :currentUser="auth.user"
         />
+        <NewTicketModal
+          :visible="showNewTicketModal"
+          @close="showNewTicketModal = false"
+          @created="refreshTickets"
+        />
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
+import api from '../services/api.js'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../store/auth.js'
 
@@ -33,11 +40,13 @@ import Sidebar from '../components/Sidebar.vue'
 import HeaderBar from '../components/HeaderBar.vue'
 import FilterBar from '../components/FilterBar.vue'
 import TicketTable from '../components/TicketTable.vue'
+import NewTicketModal from '../components/NewTicketModal.vue'
 
 const router = useRouter()
 const auth = useAuthStore()
 
 const searchQuery = ref('')
+const showNewTicketModal = ref(false)
 const assignedOnly = ref(false)
 const tickets = ref([])
 
@@ -49,40 +58,21 @@ onMounted(async () => {
     router.push('/login')
   } else {
     console.log('Loading tickets...')
-    loadTickets()
+    refreshTickets()
   }
 })
 
 
-
-function loadTickets() {
-  // Mock tickets; in production this will fetch from the backend
-  tickets.value = [
-    {
-      id: 'TASK0000001',
-      opened: '2025-09-03 07:24:56',
-      description: 'Password Reset',
-      requester: 'Michael Smith',
-      priority: 'Low',
-      assignee: 'pam.mckee@tigertrack.io'
-    },
-    {
-      id: 'TASK0000002',
-      opened: '2025-09-05 15:58:36',
-      description: 'Password Reset',
-      requester: 'Vicki Ambrose',
-      priority: 'Low',
-      assignee: 'pam.mckee@tigertrack.io'
-    },
-    {
-      id: 'INC0000001',
-      opened: '2025-09-05 15:58:36',
-      description: 'Mail Server Down',
-      requester: 'Angela Walters',
-      priority: 'Critical',
-      assignee: 'dave.lawson@tigertrack.io'
-    }
-  ]
+async function refreshTickets() {
+   try {
+    const token = localStorage.getItem('accessToken'); 
+    const { data } = await api.get('/tickets', {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    tickets.value = Array.isArray(data) ? data : (data?.items || []);
+  } catch (error) {
+    console.error('Failed to load tickets:', error);
+  }
 }
 
 function handleSearch(value) {
@@ -91,10 +81,6 @@ function handleSearch(value) {
 
 function toggleAssigned(value) {
   assignedOnly.value = value
-}
-
-function createTicket() {
-  alert('Ticket creation modal coming soon!')
 }
 
 function logout() {
