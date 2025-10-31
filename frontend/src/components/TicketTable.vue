@@ -67,8 +67,6 @@ const sortedTickets = computed(() => {
       String(v).toLowerCase().includes(props.search.toLowerCase())
     )
 
-    console.log("props.assignedOnly ", props.assignedOnly)
-    console.log("T  T T T ", t)
     const matchesAssigned = 
         !props.assignedOnly || (props.currentUser?.email && t.assignee?.email?.toLowerCase() === props.currentUser.email.toLowerCase())
 
