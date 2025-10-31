@@ -44,10 +44,10 @@ const sortOrder = ref('asc')
 
 const headers = [
   { key: 'id', label: 'Number' },
-  { key: 'opened', label: 'Opened' },
+  { key: 'createdAt', label: 'Opened' },
   { key: 'title', label: 'Title'},
   { key: 'description', label: 'Description' },
-  { key: 'requester', label: 'Requester' },
+  { key: 'reporter', label: 'Requester' },
   { key: 'priority', label: 'Priority' },
   { key: 'assignee', label: 'Assignee' },
 ]
@@ -77,8 +77,12 @@ const sortedTickets = computed(() => {
   if (!sortKey.value) return filtered
 
   return filtered.sort((a, b) => {
-    const valA = a[sortKey.value]
-    const valB = b[sortKey.value]
+    let valA = a[sortKey.value]
+    let valB = b[sortKey.value]
+
+    if (valA && typeof valA === 'object') valA = valA.displayName
+    if (valB && typeof valB === 'object') valB = valB.displayName
+
     if (valA < valB) return sortOrder.value === 'asc' ? -1 : 1
     if (valA > valB) return sortOrder.value === 'asc' ? 1 : -1
     return 0
