@@ -12,7 +12,7 @@
         </tr>
       </thead>
       <tbody>
-        <tr v-for="ticket in sortedTickets" :key="ticket.id">
+        <tr v-for="ticket in pagedTickets" :key="ticket.id">
           <td>{{ ticket.id }}</td>
           <td>{{ new Date(ticket.createdAt).toLocaleString() }}</td>
           <td>{{ ticket.title }}</td>
@@ -27,6 +27,27 @@
         </tr>
       </tbody>
     </table>
+
+    <!-- Pagination controls -->
+    <div class="pagination">
+      <button class="prev-btn"
+      @click="page--" 
+      :disabled="page === 1">Previous
+      </button>
+      <!-- Page numbers -->
+       <button
+        v-for="n in totalPages"
+        :key="n"
+        @click="page = n"
+        :class="{ active: page === n }">
+        {{ n }}
+      </button>
+      <button 
+      class="next-btn"
+      @click="page++" 
+      :disabled="page === totalPages">Next
+      </button>
+    </div>
   </div>
 </template>
 
@@ -41,6 +62,10 @@ const props = defineProps({
 
 const sortKey = ref('')
 const sortOrder = ref('asc')
+
+// Pagination controls
+const page = ref(1) // Current page
+const limit = ref(10) // Tickets per page
 
 const headers = [
   { key: 'id', label: 'Number' },
@@ -84,6 +109,16 @@ const sortedTickets = computed(() => {
     return 0
   })
 })
+
+// Slice tickets for current page
+const pagedTickets = computed(() => {
+  const start = (page.value - 1) * limit.value
+  const end = start + limit.value
+  return sortedTickets.value.slice(start, end)
+})
+
+// Totat pages for pagination
+const totalPages = computed(() => Math.ceil(sortedTickets.value.length / limit.value))
 </script>
 
 <style scoped>
@@ -107,5 +142,49 @@ th:hover {
 .priority.critical {
   color: #d32f2f;
   font-weight: bold;
+}
+
+.pagination {
+  margin-top: 1rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+}
+
+.pagination button {
+  padding: 0.4rem 0.8rem;
+  border: none;
+  background: #ffffffff;
+  color: black;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.pagination button:disabled {
+  background: #aaa;
+  cursor: default;
+}
+
+.pagination button.active {
+  background: #121864ff;
+  color: white;
+}
+
+.pagination .prev-btn {
+  background-color: #1565c0;
+  color: white;
+}
+
+.pagination .next-btn {
+  background-color: #1565c0;
+  color: white;
+}
+
+.pagination .prev-btn:disabled,
+.pagination .next-btn:disabled {
+  background-color: #aaa;
+  color: black;
+  cursor: default;
 }
 </style>
