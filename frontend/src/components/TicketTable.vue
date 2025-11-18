@@ -75,6 +75,10 @@ router.push({name: 'TicketDetail',params:{id}});
 const page = ref(1) // Current page
 const limit = ref(10) // Tickets per page
 
+// Pagination controls
+const page = ref(1) // Current page
+const limit = ref(10) // Tickets per page
+
 const headers = [
   { key: 'id', label: 'Number' },
   { key: 'opened', label: 'Opened' },
