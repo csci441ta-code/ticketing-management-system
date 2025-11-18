@@ -14,6 +14,7 @@ const routes = [
   { path: '/app', name: 'user-app', component: UserDashboard, meta: { requiresAuth: true, roles: ['user', 'admin'] } },
   { path: '/admin', name: 'admin-app', component: AdminDashboard, meta: { requiresAuth: true, roles: ['admin'] } },
   { path: '/:pathMatch(.*)*', redirect: '/login' },
+  {path: '/tickets/:id', name: 'TicketDetail', component: () => import('../views/TicketDetailView.vue'), props: true} 
 ]
 
 const router = createRouter({
