@@ -1,20 +1,31 @@
 <template>
   <aside class="sidebar">
-    <h1 class="sidebar-title">TigerTrack Solutions</h1>
+    <div class="sidebar-header">
+      <h2>Ticket Manager</h2>
+      <span class="role-badge">{{ roleLabel }}</span>
+    </div>
     <nav class="sidebar-nav">
       <ul>
-        <li v-for="item in menuItems" :key="item" :class="{ active: activeItem === item }">
-          {{ item }}
-        </li>
+        <li>Dashboard</li>
+        <!-- Admin-only section -->
+        <template v-if="role === 'admin'">
+          <li>User Management</li>
+          <li>Changelog</li>
+        </template>
       </ul>
     </nav>
   </aside>
 </template>
 
 <script setup>
-import { ref } from 'vue'
-const menuItems = ['Incidents', 'Tasks', 'Assigned to me', 'Open', 'Changes']
-const activeItem = ref('Tasks')
+import { ref, computed } from 'vue'
+import { getRoleFromToken, isTokenValid } from '../utils/jwt'
+
+const role = getRoleFromToken()?.toLowerCase()
+const roleLabel = computed(() => (role === 'admin' ? 'Administrator' : 'Employee'));
+
+//const menuItems = ['Incidents', 'Tasks', 'Assigned to me', 'Open', 'Changes']
+//const activeItem = ref('Tasks')
 </script>
 
 <style scoped>

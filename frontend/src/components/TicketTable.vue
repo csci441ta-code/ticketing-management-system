@@ -12,22 +12,26 @@
         </tr>
       </thead>
       <tbody>
-        <tr v-for="ticket in pagedTickets" :key="ticket.id">
-          <td>{{ ticket.id }}</td>
-          <td>{{ new Date(ticket.createdAt).toLocaleString() }}</td>
-          <td>{{ ticket.title }}</td>
-          <td>{{ ticket.description }}</td>
-          <td>{{ ticket.reporter?.displayName }}</td>
-          <td>
-            <span :class="'priority ' + ticket.priority.toLowerCase()">
-              {{ ticket.priority }}
-            </span>
-          </td>
-          <td>{{ ticket.assignee?.displayName || 'NULL' }}</td>
+        <tr
+            v-for="ticket in pagedTickets"
+            :key="ticket.id"
+            @click="goToDetail(ticket.id)"
+            class="hover:bg-gray-50 cursor-pointer"
+        >
+        <td>{{ ticket.id }}</td>
+        <td>{{ new Date(ticket.createdAt).toLocaleString() }}</td>
+        <td>{{ ticket.title }}</td>
+        <td>{{ ticket.description }}</td>
+        <td>{{ ticket.reporter?.displayName }}</td>
+        <td>
+        <span :class="'priority ' + (ticket.priority || '').toLowerCase()">
+            {{ ticket.priority || 'N/A' }}
+        </span>
+        </td>
+        <td>{{ ticket.assignee?.displayName || 'Unassigned' }}</td>
         </tr>
       </tbody>
     </table>
-
     <!-- Pagination controls -->
     <div class="pagination">
       <button class="prev-btn"
@@ -53,6 +57,9 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue'
+import { useRouter } from 'vue-router';
+const router = useRouter()
+
 const props = defineProps({
   tickets: Array,
   search: String,
@@ -60,8 +67,9 @@ const props = defineProps({
   currentUser: Object
 })
 
-const sortKey = ref('')
-const sortOrder = ref('asc')
+const goToDetail = (id) => {
+router.push({name: 'TicketDetail',params:{id}});
+}
 
 // Pagination controls
 const page = ref(1) // Current page
@@ -77,6 +85,9 @@ const headers = [
   { key: 'assignee', label: 'Assignee' },
 ]
 
+const sortKey = ref('')
+const sortOrder = ref('asc')
+
 const sortBy = (key) => {
   if (sortKey.value === key) {
     sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc'
@@ -86,6 +97,7 @@ const sortBy = (key) => {
   }
 }
 
+
 const sortedTickets = computed(() => {
   let filtered = props.tickets.filter(t => {
     const matchesSearch = Object.values(t).some(v =>
@@ -94,7 +106,6 @@ const sortedTickets = computed(() => {
 
     const matchesAssigned = 
         !props.assignedOnly || (props.currentUser?.email && t.requester?.toLowerCase() === props.currentUser.email.toLowerCase())
-
 
     return matchesSearch && matchesAssigned
   })
