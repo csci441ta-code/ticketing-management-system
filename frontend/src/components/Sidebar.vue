@@ -9,7 +9,14 @@
         <li>Dashboard</li>
         <!-- Admin-only section -->
         <template v-if="role === 'admin'">
-          <li>User Management</li>
+          <li>
+            <router-link 
+              to="/admin/users"
+              class="sidebar-link"
+            >
+              User Management
+            </router-link>
+          </li>
           <li>Changelog</li>
         </template>
       </ul>

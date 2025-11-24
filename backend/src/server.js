@@ -62,8 +62,13 @@ app.get('/api/health', (_req, res) => {
 // Routes
 app.use('/api/auth', require(path.join(__dirname, 'routes', 'auth')));
 
+
+
 const requireAuth = require(path.join(__dirname, 'middleware', 'requireAuth'));
 const ticketsRouter = require(path.join(__dirname, 'routes', 'tickets'));
+
+const usersRouter = require(path.join(__dirname, 'routes', 'users'))
+app.use('/api/users', requireAuth, usersRouter)
 
 // IMPORTANT: auth-protected routes are mounted *after* the CORS block above
 app.use('/api/tickets', requireAuth, ticketsRouter);
