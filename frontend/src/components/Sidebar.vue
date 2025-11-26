@@ -12,7 +12,7 @@
           <li>
             <router-link 
               to="/admin/users"
-              class="sidebar-link"
+              class="sidebar-link text-white no-underline"
             >
               User Management
             </router-link>
@@ -62,4 +62,14 @@ const roleLabel = computed(() => (role === 'admin' ? 'Administrator' : 'Employee
 .sidebar-nav li.active {
   background: #1565c0;
 }
+
+.sidebar-link,
+.sidebar-link:visited { 
+    color: white; 
+    text-decoration: none; 
+}
+.sidebar-link:hover {
+    color: white;
+}
+
 </style>
