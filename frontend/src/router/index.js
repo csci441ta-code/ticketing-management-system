@@ -13,6 +13,8 @@ const routes = [
   { path: '/register', name: 'register', component: Register, meta: { guestOnly: true } },
   { path: '/app', name: 'user-app', component: UserDashboard, meta: { requiresAuth: true, roles: ['user', 'admin'] } },
   { path: '/admin', name: 'admin-app', component: AdminDashboard, meta: { requiresAuth: true, roles: ['admin'] } },
+  { path: '/admin/users', name: 'UserManagement', component: () => import('../views/UserManagement.vue'), meta: { requiresAuth: true, requiresAdmin: true }},
+
   { path: '/:pathMatch(.*)*', redirect: '/login' },
   {path: '/tickets/:id', name: 'TicketDetail', component: () => import('../views/TicketDetailView.vue'), props: true} 
 ]

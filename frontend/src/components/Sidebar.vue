@@ -9,7 +9,14 @@
         <li>Dashboard</li>
         <!-- Admin-only section -->
         <template v-if="role === 'admin'">
-          <li>User Management</li>
+          <li>
+            <router-link 
+              to="/admin/users"
+              class="sidebar-link text-white no-underline"
+            >
+              User Management
+            </router-link>
+          </li>
           <li>Changelog</li>
         </template>
       </ul>
@@ -55,4 +62,14 @@ const roleLabel = computed(() => (role === 'admin' ? 'Administrator' : 'Employee
 .sidebar-nav li.active {
   background: #1565c0;
 }
+
+.sidebar-link,
+.sidebar-link:visited { 
+    color: white; 
+    text-decoration: none; 
+}
+.sidebar-link:hover {
+    color: white;
+}
+
 </style>
