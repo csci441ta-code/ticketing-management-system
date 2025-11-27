@@ -1,5 +1,7 @@
-// src/server.js
-//const app = require('./app');
+const express = require('express');
+const path = require('path');
+const yaml = require('js-yaml');
+const swaggerUi = require('swagger-ui-express');
 
 const app = express();
 
@@ -60,12 +62,14 @@ app.get('/api/health', (_req, res) => {
 app.use('/api/auth', require(path.join(__dirname, 'routes', 'auth')));
 
 
-
 const requireAuth = require(path.join(__dirname, 'middleware', 'requireAuth'));
 const ticketsRouter = require(path.join(__dirname, 'routes', 'tickets'));
 
 const usersRouter = require(path.join(__dirname, 'routes', 'users'))
 app.use('/api/users', requireAuth, usersRouter)
+
+const reportsRouter = require(path.join(__dirname, 'routes', 'reports'));
+app.use('/api/reports', requireAuth, reportsRouter)
 
 // IMPORTANT: auth-protected routes are mounted *after* the CORS block above
 app.use('/api/tickets', requireAuth, ticketsRouter);
