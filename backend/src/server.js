@@ -1,8 +1,5 @@
 // src/server.js
-const express = require('express');
-const path = require('path');
-const swaggerUi = require('swagger-ui-express');
-const yaml = require('yamljs');
+//const app = require('./app');
 
 const app = express();
 
@@ -78,6 +75,7 @@ app.use((_req, res) => res.status(404).json({ error: 'Not found' }));
 
 // Start
 const port = Number(process.env.PORT) || Number(process.env.BACKEND_PORT) || 3000;
+
 app.listen(port, () => {
   console.log(`🚀 Backend running on http://localhost:${port}`);
   console.log(`📘 Swagger: http://localhost:${port}/api-docs`);
