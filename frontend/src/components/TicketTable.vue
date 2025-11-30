@@ -68,7 +68,7 @@ const props = defineProps({
 })
 
 const goToDetail = (id) => {
-router.push({name: 'TicketDetail',params:{id}});
+  router.push({name: 'TicketDetail',params:{id}});
 }
 
 // Pagination controls
@@ -192,7 +192,11 @@ th:hover {
   color: white;
 }
 
-.pagination .prev-btn:disabled,
+.pagination .prev-btn:disabled {
+  background-color: #aaa; 
+  color: black; 
+  curson: default;
+ }
 .pagination .next-btn:disabled {
   background-color: #aaa;
   color: black;

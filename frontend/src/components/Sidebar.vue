@@ -58,12 +58,22 @@ const roleLabel = computed(() => (role === 'admin' ? 'Administrator' : 'Employee
   cursor: pointer;
   transition: background 0.2s;
 }
-.sidebar-nav li:hover,
+
+.sidebar-nav li:hover {
+  background: #1e88e5;
+  transition: background 0.2s;
+}
+
 .sidebar-nav li.active {
   background: #1565c0;
 }
 
-.sidebar-link,
+.sidebar-link {
+  color: #e0e0e0;
+  text-decoration: none;
+  display: block;
+}
+
 .sidebar-link:visited { 
     color: white; 
     text-decoration: none; 
