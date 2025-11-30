@@ -58,7 +58,7 @@ async function getTicketReport({ startDate = null, endDate = null } = {}) {
     where: whereBase,
   })
 
-  const recentTickets = await prisma.ticket.findMany({
+  const recentTicketsRaw = await prisma.ticket.findMany({
     where: whereBase,
     orderBy: { createdAt: 'desc' },
     take: 10,
@@ -73,8 +73,54 @@ async function getTicketReport({ startDate = null, endDate = null } = {}) {
       assigneeId: true,
       createdAt: true,
       updatedAt: true,
+      reporter: {
+        select: {
+          id: true,
+          displayName: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+        },
+      },
+      assignee: {
+        select: {
+          id: true,
+          displayName: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+        },
+      },
     },
   })
+
+  const recentTickets = recentTicketsRaw.map((t) => {
+    const reporterName =
+      t.reporter?.displayName ||
+      [t.reporter?.firstName, t.reporter?.lastName].filter(Boolean).join(' ') ||
+      null
+
+    const assigneeName =
+      t.assignee?.displayName ||
+      [t.assignee?.firstName, t.assignee?.lastName].filter(Boolean).join(' ') ||
+      null
+
+    return {
+      id: t.id,
+      key: t.key,
+      title: t.title,
+      status: t.status,
+      priority: t.priority,
+      type: t.type,
+      reporterId: t.reporterId,
+      assigneeId: t.assigneeId,
+      reporterName,
+      assigneeName,
+      createdAt: t.createdAt,
+      updatedAt: t.updatedAt,
+    }
+  })
+
 
   return {
     totalTickets,

@@ -317,10 +317,10 @@
                     </span>
                   </td>
                   <td class="py-2 pr-4 text-xs text-slate-500">
-                    {{ t.reporterId || '—' }}
+                    {{ t.reporterName || '—' }}
                   </td>
                   <td class="py-2 pr-4 text-xs text-slate-500">
-                    {{ t.assigneeId || 'Unassigned' }}
+                    {{ t.assigneeName || 'Unassigned' }}
                   </td>
                   <td class="py-2 text-xs text-slate-700">
                     {{ formatDateTime(t.createdAt) }}
