@@ -18,7 +18,7 @@
             @click="goToDetail(ticket.id)"
             class="hover:bg-gray-50 cursor-pointer"
         >
-        <td>{{ ticket.id }}</td>
+        <td>{{ ticket.key }}</td>
         <td>{{ new Date(ticket.createdAt).toLocaleString() }}</td>
         <td>{{ ticket.title }}</td>
         <td>{{ ticket.description }}</td>
