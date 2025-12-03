@@ -105,7 +105,7 @@ const sortedTickets = computed(() => {
     )
 
     const matchesAssigned = 
-        !props.assignedOnly || (props.currentUser?.email && t.requester?.toLowerCase() === props.currentUser.email.toLowerCase())
+        !props.assignedOnly || (props.currentUser?.email && t.assignee?.email?.toLowerCase() === props.currentUser.email.toLowerCase())
 
     return matchesSearch && matchesAssigned
   })

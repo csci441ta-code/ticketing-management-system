@@ -11,7 +11,7 @@
         <FilterBar
           @search="handleSearch"
           @create="showNewTicketModal = true"
-          
+          @toggle-assigned="toggleAssigned"
           
         />
         <TicketTable
@@ -47,7 +47,7 @@ const auth = useAuthStore()
 
 const searchQuery = ref('')
 const showNewTicketModal = ref(false)
-const assignedOnly = ref(false)
+let assignedOnly = ref(false)
 const tickets = ref([])
 
 onMounted(async () => {
