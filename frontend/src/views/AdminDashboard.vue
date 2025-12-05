@@ -13,17 +13,6 @@
           @create="showNewTicketModal = true"
           @toggle-assigned="toggleAssigned"
         />
-        <TicketTable
-          :tickets="tickets"
-          :search="searchQuery"
-          :assignedOnly="assignedOnly"
-          :currentUser="auth.user"
-        />
-        <NewTicketModal
-          :visible="showNewTicketModal"
-          @close="showNewTicketModal = false"
-          @created="refreshTickets"
-        />
         <!-- LOADING STATE --> 
         <div v-if="loading" class="flex justify-center items-center h-48">
           <div class="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500"></div>
@@ -82,14 +71,14 @@ const error = ref(null)
 
 onMounted(async () => {
   console.log('Dashboard mounted')
-  await auth.loadUser()
+  auth.loadUser()
   console.log('User loaded:', auth.user)
   if (!auth.user) {
     router.push('/login')
   } else {
     console.log('Loading tickets...')
     refreshTickets() 
-    loading.value = false
+    loading.value = true
   }
 })
 

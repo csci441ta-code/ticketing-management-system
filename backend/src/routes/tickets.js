@@ -148,6 +148,111 @@ function buildCreateTicketData({ body, user }) {
   };
 }
 
+// Simple weights so higher priority tickets count more
+const PRIORITY_WEIGHT = {
+  LOW: 1,
+  MEDIUM: 2,
+  HIGH: 3,
+  CRITICAL: 5,
+};
+
+/**
+ * Compute a "load score" for each user based on their active tickets,
+ * and return the userId with the lowest load.
+ *
+ * - Only considers tickets with status OPEN / IN_PROGRESS / ON_HOLD / REOPENED.
+ * - Weights tickets by priority.
+ */
+async function pickAssigneeForTicket(priorityForNewTicket = 'MEDIUM') {
+  // Which statuses count as "active" for load-balancing
+  const activeStatuses = ['OPEN', 'IN_PROGRESS', 'ON_HOLD', 'REOPENED'];
+
+  // 1) Get all eligible users (you can tweak this filter)
+  const users = await prisma.user.findMany({
+    where: {
+      isActive: true,
+      deletedAt: null,
+      role: 'ADMIN',
+    },
+    include: {
+      ticketsAssigned: {
+        where: {
+          deletedAt: null,
+          status: { in: activeStatuses },
+        },
+        select: {
+          id: true,
+          priority: true,
+        },
+      },
+    },
+  });
+
+  if (!users.length) return null;
+
+  // 2) Calculate a "load" score per user
+  let bestUserId = null;
+  let lowestLoad = Infinity;
+
+  for (const user of users) {
+    const tickets = user.ticketsAssigned || [];
+
+    const loadFromExisting = tickets.reduce((sum, t) => {
+      const w = PRIORITY_WEIGHT[t.priority] ?? 1;
+      return sum + w;
+    }, 0);
+
+    // If we want to account for this new ticket's priority as well,
+    // we can add its weight speculatively. That makes high-priority
+    // tickets slightly favor users with more slack.
+    const newTicketWeight = PRIORITY_WEIGHT[priorityForNewTicket] ?? 1;
+    const totalLoad = loadFromExisting + newTicketWeight;
+
+    if (totalLoad < lowestLoad) {
+      lowestLoad = totalLoad;
+      bestUserId = user.id;
+    }
+  }
+
+  return bestUserId;
+}
+
+// Try to create a ticket with a sequential key TCK-<n>
+// Uses count() as a starting point and retries if there's a unique key collision.
+async function createTicketWithSequentialKey(data) {
+  // Only count non-deleted tickets; adjust if you want to count all
+  const total = await prisma.ticket.count({
+    where: { deletedAt: null },
+  });
+
+  let n = total + 1;
+
+  // Keep trying until we find a free key
+  // (Should almost always succeed on the first try)
+  while (true) {
+    const key = `TCK-${n}`;
+
+    try {
+      const created = await prisma.ticket.create({
+        data: {
+          ...data,
+          key,
+        },
+      });
+      return created;
+    } catch (err) {
+      // Unique constraint violation on "key"
+      if (err.code === 'P2002' && err.meta && err.meta.target?.includes('key')) {
+        n += 1; // bump and retry
+        continue;
+      }
+      // Anything else, bubble up
+      throw err;
+    }
+  }
+}
+
+
 /**
  * Build a patch object for prisma.ticket.update(...)
  * Only allows TICKET_FIELDS and normalizes date fields.
@@ -238,7 +343,14 @@ router.get('/:id', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     const data = buildCreateTicketData({ body: req.body, user: req.user });
-    const created = await prisma.ticket.create({ data });
+
+    if (!data.assigneeId) {
+      const autoAssigneeId = await pickAssigneeForTicket(data.priority);
+      if (autoAssigneeId) data.assigneeId = autoAssigneeId;
+    }
+
+    const created = await createTicketWithSequentialKey(data);
+
     res.status(201).json(created);
   } catch (err) {
     if (err.status) {
