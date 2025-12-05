@@ -78,7 +78,7 @@ onMounted(async () => {
   } else {
     console.log('Loading tickets...')
     refreshTickets() 
-    loading.value = true
+    loading.value = false
   }
 })
 
