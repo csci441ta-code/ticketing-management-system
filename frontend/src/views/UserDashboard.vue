@@ -13,18 +13,35 @@
           @search="handleSearch"
           @create="showNewTicketModal = true"
         />
+        <!-- LOADING STATE --> 
+        <div v-if="loading" class="flex justify-center items-center h-48">
+          <div class="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500"></div>
+        </div>
+        
+        <!-- ERROR STATE --> 
+        <div v-else-if="error" class="text-center text-red-500 mt-10">
+            {{ error }}
+        </div>
+        
+        <!-- EMPTY STATE -->
+        <div v-else-if="!tickets.length" class="text-center text-gray-400 mt-10">
+            No tickets present.
+        </div>
+        
+        <!-- SUCCESS STATE -->
+        <div v-else> 
+            <TicketTable
+                :tickets="tickets"
+                :search="searchQuery"
+                :currentUser="auth.user"
+            />
 
-        <TicketTable
-          :tickets="tickets"
-          :search="searchQuery"
-          :currentUser="auth.user"
-        />
-
-        <NewTicketModal
-          :visible="showNewTicketModal"
-          @close="showNewTicketModal = false"
-          @created="refreshTickets"
-        />
+            <NewTicketModal
+                :visible="showNewTicketModal"
+                @close="showNewTicketModal = false"
+                @created="refreshTickets"
+            />
+        </div>
       </div>
     </div>
   </div>
@@ -45,9 +62,14 @@ import NewTicketModal from '../components/NewTicketModal.vue'
 const router = useRouter()
 const auth = useAuthStore()
 
-const tickets = ref([])
 const searchQuery = ref('')
 const showNewTicketModal = ref(false)
+
+const tickets = ref([])
+const loading = ref(true) 
+const error = ref(null) 
+
+
 
 const filteredTickets = computed(() =>
   tickets.value.filter(t =>
@@ -84,6 +106,7 @@ function logout() {
 onMounted(async () => {
   await auth.loadUser()
   await refreshTickets()
+  loading.value = false
 })
 </script>
 
