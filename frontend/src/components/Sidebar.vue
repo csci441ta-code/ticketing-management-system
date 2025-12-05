@@ -18,6 +18,14 @@
             </router-link>
           </li>
           <li>Changelog</li>
+          <li>
+            <router-link 
+              to="/admin/report"
+              class="sidebar-link text-white no-underline"
+            >
+              Report
+            </router-link>
+          </li>
         </template>
       </ul>
     </nav>

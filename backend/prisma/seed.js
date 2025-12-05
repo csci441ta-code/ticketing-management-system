@@ -22,7 +22,6 @@ async function upsertUser({ email, firstName, lastName, displayName, passwordHas
   });
 }
 
-// helper: create a ticket with history + watchers in a single transaction
 async function createTicket({
   key,
   title,
@@ -34,6 +33,7 @@ async function createTicket({
   assigneeId = null,
   watchers = [], // array of userIds
   history = [],  // array of { userId, summary, changes, comment }
+  createdAt,     // <-- NEW
   dueAt = null,
   resolvedAt = null,
   closedAt = null,
@@ -44,11 +44,12 @@ async function createTicket({
         key,
         title,
         description,
-        status,         // enum string, e.g. 'OPEN'
-        priority,       // 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'
-        type,           // 'BUG' | 'TASK' | 'FEATURE' | 'INCIDENT' | 'SUPPORT'
+        status,   // enum string, e.g. 'OPEN'
+        priority, // 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'
+        type,     // 'BUG' | 'TASK' | 'FEATURE' | 'INCIDENT' | 'SUPPORT'
         reporterId,
         assigneeId,
+        createdAt, // <-- IMPORTANT
         dueAt,
         resolvedAt,
         closedAt,
@@ -74,17 +75,20 @@ async function createTicket({
   });
 }
 
+
 async function main() {
   const adminPwdHash = bcrypt.hashSync('FHSU1234', 10);
   const userPwdHash = bcrypt.hashSync('FHSU1234', 10);
 
-  // ---- Admins (exact names/emails from you) ----
+  await prisma.$executeRawUnsafe('TRUNCATE TABLE "Ticket" RESTART IDENTITY CASCADE;');
+
   const adminsData = [
     { email: 'kylewhat@gmail.com',            firstName: 'Kyle',    lastName: 'Frischman', displayName: 'Kyle Frischman' },
     { email: 'k_gibson4@mail.fhsu.edu',       firstName: 'Kyle',    lastName: 'Gibson',    displayName: 'Kyle Gibson' },
     { email: 'cmguinnee@mail.fhsu.edu',       firstName: 'Cameron', lastName: 'Guinnee',   displayName: 'Cameron Guinnee' },
     { email: 'j_swanson2@mail.fhsu.edu',      firstName: 'Jordan',  lastName: 'Swanson',   displayName: 'Jordan Swanson' },
   ];
+
   const admins = await Promise.all(
     adminsData.map((a) =>
       upsertUser({
@@ -94,15 +98,14 @@ async function main() {
       })
     )
   );
-  const [admin1, admin2, admin3, admin4] = admins;
 
-  // ---- Regular users (sample) ----
   const usersData = [
-    { email: 'alex.lee@example.com',   firstName: 'Alex',  lastName: 'Lee',    displayName: 'Alex Lee' },
-    { email: 'sam.taylor@example.com', firstName: 'Sam',   lastName: 'Taylor', displayName: 'Sam Taylor' },
+    { email: 'alex.lee@example.com',     firstName: 'Alex',  lastName: 'Lee',    displayName: 'Alex Lee' },
+    { email: 'sam.taylor@example.com',   firstName: 'Sam',   lastName: 'Taylor', displayName: 'Sam Taylor' },
     { email: 'riley.morgan@example.com', firstName: 'Riley', lastName: 'Morgan', displayName: 'Riley Morgan' },
-    { email: 'jamie.chen@example.com', firstName: 'Jamie', lastName: 'Chen',   displayName: 'Jamie Chen' },
+    { email: 'jamie.chen@example.com',   firstName: 'Jamie', lastName: 'Chen',   displayName: 'Jamie Chen' },
   ];
+
   const users = await Promise.all(
     usersData.map((u) =>
       upsertUser({
@@ -112,143 +115,167 @@ async function main() {
       })
     )
   );
-  const [alex, sam, riley, jamie] = users;
 
-  // ---- Tickets in various statuses ----
-  const now = new Date();
-  const earlier = new Date(now.getTime() - 1000 * 60 * 60 * 24); // 1 day ago
+  const allAdmins = admins;
+  const allUsers = users;
 
-  await Promise.all([
-    createTicket({
-      key: 'TCK-1',
-      title: 'Login fails with 401 for student portal',
-      description: 'Users report 401 on valid credentials.',
-      status: 'OPEN',
-      priority: 'HIGH',
-      type: 'BUG',
-      reporterId: admin1.id,
-      assigneeId: alex.id,
-      watchers: [admin1.id, sam.id],
-      history: [
-        { userId: admin1.id, summary: 'Ticket created', changes: { created: true }, comment: 'Initial report' },
-      ],
-    }),
+  const statuses = ['OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED', 'REOPENED', 'ON_HOLD'];
+  const priorities = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
+  const types = ['BUG', 'TASK', 'FEATURE', 'INCIDENT', 'SUPPORT'];
 
-    createTicket({
-      key: 'TCK-2',
-      title: 'Add “Forgot Password” flow',
-      description: 'Implement email reset with token.',
-      status: 'IN_PROGRESS',
-      priority: 'MEDIUM',
-      type: 'FEATURE',
-      reporterId: admin2.id,
-      assigneeId: sam.id,
-      watchers: [admin2.id, riley.id],
-      history: [
-        { userId: admin2.id, summary: 'Ticket created', changes: { created: true } },
-        { userId: sam.id, summary: 'Status changed OPEN → IN_PROGRESS', changes: { status: { from: 'OPEN', to: 'IN_PROGRESS' } } },
-      ],
-    }),
+  const sampleTitles = [
+    'Login fails with 401 for student portal',
+    'Add “Forgot Password” flow',
+    'Outage on lab printers (3rd floor)',
+    'Orientation form typo',
+    'Re-open: MFA prompt loops',
+    'Waiting on vendor response for SSO mapping',
+    'Student profile picture upload fails',
+    'Add dark mode to help center',
+    'Course registration timeout errors',
+    'Mobile app push notifications not received',
+    'Gradebook export to CSV fails',
+    'Slow load time on dashboard',
+    'Error 500 when submitting assignment',
+    'SSO misconfigured for faculty accounts',
+    'Email digest sending duplicates',
+    'Attachment upload size limit confusion',
+    'Auto-logout happens too quickly',
+    'Dorm Wi-Fi captive portal loop',
+    'VPN client installation issues',
+    'Kiosk printer low toner alerts',
+  ];
 
-    createTicket({
-      key: 'TCK-3',
-      title: 'Outage on lab printers (3rd floor)',
-      description: 'Intermittent jam + overheating alert.',
-      status: 'RESOLVED',
-      priority: 'CRITICAL',
-      type: 'INCIDENT',
-      reporterId: admin3.id,
-      assigneeId: jamie.id,
-      watchers: [admin3.id, jamie.id],
-      resolvedAt: now,
-      history: [
-        { userId: admin3.id, summary: 'Ticket created', changes: { created: true } },
-        { userId: jamie.id, summary: 'Status changed IN_PROGRESS → RESOLVED', changes: { status: { from: 'IN_PROGRESS', to: 'RESOLVED' } }, comment: 'Reset & replaced fuser' },
-      ],
-    }),
+  const sampleDescriptions = [
+    'Reported by multiple students across departments.',
+    'Affects usability for users who forget credentials.',
+    'Intermittent behavior, seems time-of-day dependent.',
+    'Visible to a large portion of the student body.',
+    'Began after the most recent maintenance window.',
+    'Only happening in certain browsers according to reports.',
+    'Impacts peak registration hours the most.',
+    'Observed in both test and production environments.',
+    'Vendor ticket has been opened for follow-up.',
+    'Logs show occasional timeout from upstream service.',
+  ];
 
-    createTicket({
-      key: 'TCK-4',
-      title: 'Orientation form typo',
-      description: '“Adress” → “Address” on step 2.',
-      status: 'CLOSED',
-      priority: 'LOW',
-      type: 'TASK',
-      reporterId: admin4.id,
-      assigneeId: riley.id,
-      watchers: [admin4.id],
-      closedAt: now,
-      history: [
-        { userId: admin4.id, summary: 'Ticket created', changes: { created: true } },
-        { userId: riley.id, summary: 'Status changed RESOLVED → CLOSED', changes: { status: { from: 'RESOLVED', to: 'CLOSED' } }, comment: 'Verified in prod' },
-      ],
-    }),
+  function pickRandom(arr) {
+    return arr[Math.floor(Math.random() * arr.length)];
+  }
 
-    createTicket({
-      key: 'TCK-5',
-      title: 'Re-open: MFA prompt loops',
-      description: 'Users stuck in a loop after successful MFA.',
-      status: 'REOPENED',
-      priority: 'HIGH',
-      type: 'BUG',
-      reporterId: admin1.id,
-      assigneeId: alex.id,
-      watchers: [admin2.id, alex.id],
-      history: [
-        { userId: admin1.id, summary: 'Ticket created', changes: { created: true } },
-        { userId: admin1.id, summary: 'Status changed CLOSED → REOPENED', changes: { status: { from: 'CLOSED', to: 'REOPENED' } } },
-      ],
-    }),
+  function randomPastDate(daysBack = 60) {
+    const nowMs = Date.now();
+    const maxOffsetMs = daysBack * 24 * 60 * 60 * 1000;
+    const offsetMs = Math.floor(Math.random() * maxOffsetMs);
+    const offsetWithinDay = Math.floor(Math.random() * 24 * 60 * 60 * 1000);
+    return new Date(nowMs - offsetMs - offsetWithinDay);
+  }
 
-    createTicket({
-      key: 'TCK-6',
-      title: 'Waiting on vendor response for SSO mapping',
-      description: 'Vendor ticket #84923 pending.',
-      status: 'ON_HOLD',
-      priority: 'MEDIUM',
-      type: 'SUPPORT',
-      reporterId: admin2.id,
-      assigneeId: sam.id,
-      watchers: [sam.id],
-      dueAt: new Date(now.getTime() + 1000 * 60 * 60 * 24 * 3), // in 3 days
-      history: [
-        { userId: admin2.id, summary: 'Ticket created', changes: { created: true } },
-        { userId: sam.id, summary: 'Status changed IN_PROGRESS → ON_HOLD', changes: { status: { from: 'IN_PROGRESS', to: 'ON_HOLD' } }, comment: 'Awaiting vendor' },
-      ],
-    }),
+  function buildHistory({ reporter, assignee, status }) {
+    const history = [
+      {
+        userId: reporter.id,
+        summary: 'Ticket created',
+        changes: { created: true },
+      },
+    ];
 
-    createTicket({
-      key: 'TCK-7',
-      title: 'Student profile picture upload fails',
-      description: 'Multipart form boundary mismatch.',
-      status: 'OPEN',
-      priority: 'MEDIUM',
-      type: 'BUG',
-      reporterId: admin3.id,
-      assigneeId: riley.id,
-      watchers: [riley.id],
-      history: [{ userId: admin3.id, summary: 'Ticket created', changes: { created: true } }],
-    }),
+    let fromStatus = 'OPEN';
+    if (status === 'OPEN') {
+      return history;
+    }
+    if (status === 'REOPENED') {
+      fromStatus = 'CLOSED';
+    }
 
-    createTicket({
-      key: 'TCK-8',
-      title: 'Add dark mode to help center',
-      description: 'Theme toggle + persisted preference.',
-      status: 'IN_PROGRESS',
-      priority: 'LOW',
-      type: 'FEATURE',
-      reporterId: admin4.id,
-      assigneeId: jamie.id,
-      watchers: [admin4.id, jamie.id],
-      history: [
-        { userId: admin4.id, summary: 'Ticket created', changes: { created: true } },
-        { userId: jamie.id, summary: 'Status changed OPEN → IN_PROGRESS', changes: { status: { from: 'OPEN', to: 'IN_PROGRESS' } } },
-      ],
-    }),
-  ]);
+    history.push({
+      userId: assignee.id,
+      summary: `Status changed ${fromStatus} → ${status}`,
+      changes: { status: { from: fromStatus, to: status } },
+    });
 
-  console.log('Seed complete: admins, users, tickets created.');
+    return history;
+  }
+
+  function buildExtraDates(status, createdAt) {
+    const extra = {};
+    const hours = 1 + Math.floor(Math.random() * 72);
+    const later = new Date(createdAt.getTime() + hours * 60 * 60 * 1000);
+
+    if (status === 'RESOLVED') {
+      extra.resolvedAt = later;
+    }
+    if (status === 'CLOSED') {
+      extra.closedAt = later;
+    }
+    if (status === 'ON_HOLD') {
+      extra.dueAt = later;
+    }
+
+    return extra;
+  }
+
+  function buildWatchers({ reporter, assignee, allUsers, allAdmins }) {
+    const candidateIds = [
+      ...allUsers.map((u) => u.id),
+      ...allAdmins.map((a) => a.id),
+    ].filter((id) => id !== reporter.id && id !== assignee.id);
+
+    const watchers = [];
+    const watcherCount = Math.floor(Math.random() * 3);
+    for (let i = 0; i < watcherCount; i++) {
+      const id = pickRandom(candidateIds);
+      if (!watchers.includes(id)) {
+        watchers.push(id);
+      }
+    }
+    if (!watchers.includes(assignee.id)) {
+      watchers.push(assignee.id);
+    }
+    return watchers;
+  }
+
+  const tickets = [];
+
+  for (let i = 1; i <= 100; i++) {
+    const key = `TCK-${i}`;
+
+    const reporter = pickRandom(allUsers);
+    const assignee = pickRandom(allAdmins);
+    const status = pickRandom(statuses);
+    const priority = pickRandom(priorities);
+    const type = pickRandom(types);
+
+    const title = sampleTitles[(i - 1) % sampleTitles.length];
+    const description = sampleDescriptions[(i - 1) % sampleDescriptions.length];
+
+    const createdAt = randomPastDate(60);
+    const history = buildHistory({ reporter, assignee, status });
+    const extraDates = buildExtraDates(status, createdAt);
+    const watchers = buildWatchers({ reporter, assignee, allUsers, allAdmins });
+
+    tickets.push({
+      key,
+      title,
+      description,
+      status,
+      priority,
+      type,
+      reporterId: reporter.id,
+      assigneeId: assignee.id,
+      watchers,
+      history,
+      createdAt,
+      ...extraDates,
+    });
+  }
+
+  for (const t of tickets) {
+    await createTicket(t);
+  }
 }
+
+
 
 main()
   .catch((e) => {
