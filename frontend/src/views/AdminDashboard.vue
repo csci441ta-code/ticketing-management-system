@@ -87,7 +87,11 @@ async function refreshTickets() {
    try {
     const token = localStorage.getItem('accessToken'); 
     const { data } = await api.get('/tickets', {
-      headers: { Authorization: `Bearer ${token}` }
+      headers: { Authorization: `Bearer ${token}` },
+      params: {
+        page: 1, 
+        pageSize: Number.MAX_SAFE_INTEGER
+      }
     });
     tickets.value = Array.isArray(data) ? data : (data?.items || []);
   } catch (err) {
